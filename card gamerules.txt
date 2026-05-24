@@ -233,6 +233,8 @@ OR
 
 Role:
 Aggressive mobile bruiser.
+Ability: 
+If Knight moves, it attack power gets doubled.
 
 ----------------------------------------
 5. POPE
