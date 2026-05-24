@@ -105,9 +105,14 @@ function getStraightLineTiles(fromRow, fromCol, toRow, toCol) {
     return tiles;
 }
 
-// Check line of sight for archer and pikeman
+// Check whether a ranged attack is in a straight row or column.
+function isStraightLineAttack(fromRow, fromCol, toRow, toCol) {
+    return fromRow === toRow || fromCol === toCol;
+}
+
+// Check clear line of sight for units blocked by intervening troops.
 function hasLineOfSight(board, fromRow, fromCol, toRow, toCol) {
-    if (fromRow !== toRow && fromCol !== toCol) return false;
+    if (!isStraightLineAttack(fromRow, fromCol, toRow, toCol)) return false;
     const line = getStraightLineTiles(fromRow, fromCol, toRow, toCol);
     for (const tile of line) {
         if (board[tile.row][tile.col].unit) return false;
@@ -139,8 +144,8 @@ function getValidAttacks(board, unit, row, col, owner) {
             const dist = getDistance(row, col, r, c);
             const target = board[r][c].unit;
             if (dist > 0 && dist <= range && target && target.owner !== owner) {
-                // Archer and Pikeman line of sight check
-                if ((unit.id === 'archer' || unit.id === 'pikeman') && !hasLineOfSight(board, row, col, r, c)) continue;
+                if (unit.id === 'archer' && !isStraightLineAttack(row, col, r, c)) continue;
+                if (unit.id === 'pikeman' && !hasLineOfSight(board, row, col, r, c)) continue;
                 attacks.push({ row: r, col: c, target });
             }
         }

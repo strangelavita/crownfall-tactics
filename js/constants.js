@@ -218,12 +218,16 @@ const SPACE_CARDS = {
 
 // Build deck
 function buildDeck() {
-    const deck = [];
+    const pool = [];
     for (const [key, unit] of Object.entries(UNITS)) {
         for (let i = 0; i < unit.copies; i++) {
-            deck.push({ ...unit, instanceId: `${unit.id}_${i}` });
+            pool.push({ ...unit, instanceId: `${unit.id}_${i}` });
         }
     }
+
+    const king = pool.find(card => card.id === 'king');
+    const nonKingCards = shuffleArray(pool.filter(card => card.id !== 'king'));
+    const deck = king ? [king, ...nonKingCards.slice(0, CONSTANTS.DECK_SIZE - 1)] : nonKingCards.slice(0, CONSTANTS.DECK_SIZE);
     return shuffleArray(deck);
 }
 

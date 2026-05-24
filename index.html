@@ -138,7 +138,10 @@
                 <div id="left-panel" class="side-panel">
                     <div class="panel-header">
                         <span class="panel-title">Your Hand</span>
-                        <span id="deck-count" class="deck-count">10</span>
+                        <span class="hand-deck-counts">
+                            <span id="hand-count" class="deck-count">Hand 0</span>
+                            <span id="deck-count" class="deck-count">Deck 0</span>
+                        </span>
                     </div>
                     <div id="player-hand" class="card-hand"></div>
                 </div>
@@ -191,6 +194,12 @@
                     <div id="log-content" class="log-content"></div>
                 </div>
                 <div id="action-buttons">
+                    <div id="space-action-panel" class="space-action-panel hidden">
+                        <div id="space-action-title" class="space-action-title">Space Card</div>
+                        <div id="space-action-desc" class="space-action-desc"></div>
+                        <button id="btn-activate-space" class="action-btn space-activate">Activate Space Card (1 AP)</button>
+                        <button id="btn-select-unit-from-space" class="action-btn secondary hidden">Select Unit</button>
+                    </div>
                     <button id="btn-end-turn" class="action-btn primary">End Turn</button>
                     <button id="btn-pause" class="action-btn">⏸</button>
                 </div>

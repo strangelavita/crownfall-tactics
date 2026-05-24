@@ -83,6 +83,19 @@ function initEventListeners() {
         if (audioManager) audioManager.playClick();
     });
 
+    $('#btn-activate-space').addEventListener('click', () => {
+        if (!game || game.isGameOver) return;
+        game.activateSelectedSpaceCard();
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-select-unit-from-space').addEventListener('click', () => {
+        if (!game || !game.selectedSpaceCard) return;
+        const { row, col } = game.selectedSpaceCard;
+        game.selectUnit(row, col);
+        if (audioManager) audioManager.playClick();
+    });
+
     // Pause Menu
     $('#btn-resume').addEventListener('click', () => {
         hideOverlay('pause-menu');
@@ -292,6 +305,8 @@ function renderSpacePlacementUI(cards, owner) {
         cardEl.innerHTML = `
             <div class="space-card-icon">${card.emoji}</div>
             <div class="space-card-name">${card.name}</div>
+            <div class="space-card-meta">${card.type} &middot; 1 AP</div>
+            <div class="space-card-effect">${card.effect}</div>
         `;
         cardEl.addEventListener('click', () => {
             if (cards[index].placedAt) return;
@@ -417,4 +432,3 @@ function randomizeSpacePlacement(owner) {
     const allPlaced = cards.every(c => c.placedAt);
     if (startBtn) startBtn.disabled = !allPlaced;
 }
-

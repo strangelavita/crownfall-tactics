@@ -37,6 +37,12 @@ class Game {
         this.initBoard();
         this.playerDeck = buildDeck();
         this.enemyDeck = buildDeck();
+        this.playerHand = [];
+        this.enemyHand = [];
+        this.units = [];
+        this.selectedCard = null;
+        this.selectedUnit = null;
+        this.selectedSpaceCard = null;
         this.drawStartingHands();
     }
 
@@ -128,6 +134,8 @@ class Game {
         if (this.currentTurn !== 'player') return;
         this.selectedCard = null;
         this.selectedUnit = null;
+        this.selectedSpaceCard = null;
+        this.clearVolcanoEffects('player');
         this.currentTurn = 'enemy';
         this.phase = CONSTANTS.PHASE.ENEMY_TURN;
         this.enemyAP = CONSTANTS.AP_PER_TURN;
@@ -157,6 +165,7 @@ class Game {
             case 'deploy': await this.deployUnit('enemy', action.card, action.row, action.col); break;
             case 'move': await this.moveUnit(action.unit, action.toRow, action.toCol); break;
             case 'attack': await this.attackUnit(action.unit, action.targetRow, action.targetCol); break;
+            case 'space': await this.activateSpaceCard(action.row, action.col); break;
             case 'ability': 
                 if (action.ability === 'architect') {
                     await this.useArchitectAbility(action.unit, action.targetRow, action.targetCol);
@@ -171,6 +180,8 @@ class Game {
         if (this.isGameOver) return;
         this.selectedCard = null;
         this.selectedUnit = null;
+        this.selectedSpaceCard = null;
+        this.clearVolcanoEffects('enemy');
         this.phase = CONSTANTS.PHASE.RESOLUTION;
         await this.resolutionPhase();
         if (this.round >= CONSTANTS.TOTAL_ROUNDS) {
@@ -233,7 +244,7 @@ class Game {
         for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
             for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
                 const tile = this.board[r][c];
-                if (tile.spaceCard && tile.spaceCard.id === 'tower' && tile.spaceCard.owner === turnOwner && !tile.spaceCard.disabled) {
+                if (tile.spaceCard && tile.spaceCard.id === 'tower' && tile.spaceCard.owner === turnOwner && tile.spaceCard.activated && !tile.spaceCard.disabled) {
                     const adjacent = getAdjacentTiles(r, c);
                     for (const adj of adjacent) {
                         const adjTile = this.board[adj.row][adj.col];
@@ -263,6 +274,22 @@ class Game {
         }
     }
 
+    clearVolcanoEffects(owner) {
+        for (const unit of this.units) {
+            if (unit.owner === owner) {
+                unit.volcanoEffect = false;
+            }
+        }
+    }
+
+    isSpaceCardVisibleTo(spaceCard, viewer) {
+        return !!spaceCard && (spaceCard.owner === viewer || spaceCard.activated || spaceCard.used);
+    }
+
+    getViewerOwner() {
+        return this.gameMode === 'vs_ai' ? 'player' : this.currentTurn;
+    }
+
     selectCard(index) {
         if (this.phase !== CONSTANTS.PHASE.PLAYER_TURN && this.phase !== CONSTANTS.PHASE.ENEMY_TURN) return;
         const currentHand = this.currentTurn === 'player' ? this.playerHand : this.enemyHand;
@@ -271,6 +298,8 @@ class Game {
         if (!card || card.apCost > currentAP) return;
         this.selectedCard = { card, index };
         this.selectedUnit = null;
+        this.selectedSpaceCard = null;
+        this.updateSpaceActionPanel();
         this.renderBoard();
         this.renderHand();
     }
@@ -280,6 +309,8 @@ class Game {
         if (!tile.unit || tile.unit.owner !== this.currentTurn) return;
         this.selectedUnit = { unit: tile.unit, row, col };
         this.selectedCard = null;
+        this.selectedSpaceCard = null;
+        this.updateSpaceActionPanel();
         this.renderBoard();
         this.renderUnitInfo(tile.unit);
     }
@@ -287,6 +318,7 @@ class Game {
     async clickTile(row, col) {
         if (this.phase !== CONSTANTS.PHASE.PLAYER_TURN && this.phase !== CONSTANTS.PHASE.ENEMY_TURN) return;
         if (this.isGameOver) return;
+        if (this.gameMode === 'vs_ai' && this.currentTurn === 'enemy') return;
 
         const currentOwner = this.currentTurn;
         const tile = this.board[row][col];
@@ -304,6 +336,8 @@ class Game {
                     this.enemyAP -= card.apCost;
                 }
                 this.selectedCard = null;
+                this.selectedSpaceCard = null;
+                this.updateSpaceActionPanel();
                 this.updateUI();
             } else {
                 // Invalid deploy - deselect
@@ -320,6 +354,12 @@ class Game {
 
             // Move
             if (!tile.unit && dist <= unit.moveRange && !this.unitsActed.has(unit.instanceId)) {
+                if (unit.volcanoEffect) {
+                    logAction(`${unit.name} cannot move while affected by Volcano.`, 'system');
+                    this.selectedUnit = null;
+                    this.renderBoard();
+                    return;
+                }
                 await this.moveUnit(unit, row, col);
                 this.unitsActed.add(unit.instanceId);
                 if (currentOwner === 'player') this.playerAP -= 1;
@@ -331,8 +371,14 @@ class Game {
 
             // Attack
             if (tile.unit && tile.unit.owner !== currentOwner && dist <= unit.attackRange) {
-                if ((unit.id === 'archer' || unit.id === 'pikeman') && !hasLineOfSight(this.board, fromRow, fromCol, row, col)) {
-                    logAction(`${unit.name} requires line of sight!`, 'system');
+                if (unit.id === 'archer' && !isStraightLineAttack(fromRow, fromCol, row, col)) {
+                    logAction(`${unit.name} can only attack in straight lines!`, 'system');
+                    this.selectedUnit = null;
+                    this.renderBoard();
+                    return;
+                }
+                if (unit.id === 'pikeman' && !hasLineOfSight(this.board, fromRow, fromCol, row, col)) {
+                    logAction(`${unit.name} requires a clear straight line!`, 'system');
                     this.selectedUnit = null;
                     this.renderBoard();
                     return;
@@ -358,7 +404,7 @@ class Game {
             // Architect ability - destroy/disable adjacent space cards
             if (unit.id === 'architect' && dist <= 1) {
                 const adjTile = this.board[row][col];
-                if (adjTile.spaceCard && adjTile.spaceCard.owner !== currentOwner) {
+                if (adjTile.spaceCard && adjTile.spaceCard.owner !== currentOwner && this.isSpaceCardVisibleTo(adjTile.spaceCard, currentOwner)) {
                     const sc = adjTile.spaceCard;
                     if (sc.type === 'one-time' && !sc.used) {
                         // Destroy unactivated one-time card
@@ -425,10 +471,107 @@ class Game {
             return;
         }
 
+        // Select a space card and show the deliberate activation option.
+        if (tile.spaceCard && tile.spaceCard.owner === currentOwner) {
+            this.selectSpaceCard(row, col);
+            return;
+        }
+
         // Select unit on tile
         if (tile.unit && tile.unit.owner === currentOwner) {
             this.selectUnit(row, col);
+            return;
         }
+
+        this.selectedSpaceCard = null;
+        this.updateSpaceActionPanel();
+        this.renderBoard();
+    }
+
+    selectSpaceCard(row, col) {
+        const tile = this.board[row][col];
+        if (!tile.spaceCard || tile.spaceCard.owner !== this.currentTurn) return;
+        this.selectedSpaceCard = { card: tile.spaceCard, row, col };
+        this.selectedCard = null;
+        this.selectedUnit = null;
+        this.renderBoard();
+        this.renderTileInfo(tile);
+        if (tile.unit) this.renderUnitInfo(tile.unit);
+        this.updateSpaceActionPanel();
+    }
+
+    canActivateSpaceCard(row, col) {
+        const tile = this.board[row][col];
+        const sc = tile.spaceCard;
+        const currentAP = this.currentTurn === 'player' ? this.playerAP : this.enemyAP;
+        if (!sc || sc.owner !== this.currentTurn) return false;
+        if (sc.disabled || sc.used || sc.activated || currentAP < 1) return false;
+        if (sc.id === 'tower') return true;
+        if (!tile.unit) return false;
+        if (sc.id === 'volcano') return true;
+        return tile.unit.owner === this.currentTurn;
+    }
+
+    async activateSelectedSpaceCard() {
+        if (!this.selectedSpaceCard) return;
+        const { row, col } = this.selectedSpaceCard;
+        if (!this.canActivateSpaceCard(row, col)) {
+            logAction('That space card cannot be activated right now.', 'system');
+            this.updateSpaceActionPanel();
+            return;
+        }
+
+        await this.activateSpaceCard(row, col);
+        if (this.currentTurn === 'player') this.playerAP -= 1;
+        else this.enemyAP -= 1;
+        this.selectedSpaceCard = null;
+        this.updateUI();
+        this.updateSpaceActionPanel();
+    }
+
+    async activateSpaceCard(row, col) {
+        const tile = this.board[row][col];
+        const sc = tile.spaceCard;
+        const unit = tile.unit;
+        if (!sc) return;
+        if (sc.id !== 'tower' && !unit) return;
+        if (sc.id !== 'tower' && sc.id !== 'volcano' && unit.owner !== sc.owner) return;
+
+        if (sc.id === 'castle') {
+            unit.maxHealth = (unit.maxHealth || unit.health) + 40;
+            unit.health = unit.maxHealth;
+            unit.currentHealth = Math.min((unit.currentHealth || unit.health) + 40, unit.maxHealth);
+            sc.activated = true;
+            logAction(`${sc.name} fortified ${unit.name} with +40 max health.`, sc.owner);
+        } else if (sc.id === 'tower') {
+            sc.activated = true;
+            logAction(`${sc.name} is activated and will fire at the start of your turns.`, sc.owner);
+        } else if (sc.id === 'volcano') {
+            unit.volcanoEffect = true;
+            sc.used = true;
+            logAction(`${sc.name} erupted under ${unit.name}. They cannot move this turn and take +50% damage.`, sc.owner);
+        } else if (sc.id === 'shield') {
+            unit.shield = true;
+            sc.used = true;
+            logAction(`${unit.name} gained a Shield from ${sc.name}.`, sc.owner);
+        } else if (sc.id === 'rage_potion') {
+            unit.ragePotion = true;
+            sc.used = true;
+            logAction(`${unit.name} gained Rage Potion. Next attack deals 200% damage.`, sc.owner);
+        } else if (sc.id === 'health_potion') {
+            const oldHp = unit.currentHealth;
+            unit.currentHealth = unit.maxHealth || unit.health;
+            sc.used = true;
+            logAction(`${unit.name} used Health Potion and restored ${unit.currentHealth - oldHp} HP.`, sc.owner);
+            const tileEl = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (tileEl) {
+                const rect = tileEl.getBoundingClientRect();
+                showFloatingText(`+${unit.currentHealth - oldHp}`, rect.left + rect.width / 2, rect.top, 'heal');
+            }
+        }
+
+        this.renderBoard();
+        await delay(200);
     }
 
     canDeploy(owner, row, col) {
@@ -450,7 +593,7 @@ class Game {
             summonedThisTurn: true, buffs: []
         };
         const tile = this.board[row][col];
-        if (tile.spaceCard && tile.spaceCard.id === 'castle' && !tile.spaceCard.disabled) {
+        if (tile.spaceCard && tile.spaceCard.id === 'castle' && tile.spaceCard.activated && !tile.spaceCard.disabled) {
             unit.maxHealth = (unit.maxHealth || unit.health) + 40;
             unit.health = unit.maxHealth;
             unit.currentHealth = unit.maxHealth;
@@ -473,34 +616,6 @@ class Game {
         this.board[fromRow][fromCol].unit = null;
         unit.hasMoved = true;
         const tile = this.board[toRow][toCol];
-
-        // Space card triggers on move
-        if (tile.spaceCard && tile.spaceCard.owner !== unit.owner) {
-            const sc = tile.spaceCard;
-            if (sc.id === 'volcano') {
-                sc.used = true;
-                unit.volcanoEffect = true;
-                logAction(`${unit.name} stepped on Volcano! Cannot move, takes +50% damage.`, 'system');
-            } else if (sc.id === 'rage_potion') {
-                sc.used = true;
-                unit.ragePotion = true;
-                logAction(`${unit.name} drank Rage Potion! Next attack deals 200% damage.`, 'system');
-            } else if (sc.id === 'health_potion') {
-                sc.used = true;
-                const oldHp = unit.currentHealth;
-                unit.currentHealth = unit.maxHealth || unit.health;
-                logAction(`${unit.name} drank Health Potion! Restored to full health (${unit.currentHealth - oldHp} HP).`, 'system');
-                const tileEl = document.querySelector(`[data-row="${toRow}"][data-col="${toCol}"]`);
-                if (tileEl) {
-                    const rect = tileEl.getBoundingClientRect();
-                    showFloatingText(`+${unit.currentHealth - oldHp}`, rect.left + rect.width / 2, rect.top, 'heal');
-                }
-            } else if (sc.id === 'shield') {
-                sc.used = true;
-                unit.shield = true;
-                logAction(`${unit.name} picked up a Shield! Blocks next incoming damage.`, 'system');
-            }
-        }
 
         logAction(`${unit.owner === 'player' ? 'Player' : 'Enemy'} moved ${unit.name} to ${CONSTANTS.COORDS[toRow][toCol]}`, unit.owner);
         this.applyKingBuffs();
@@ -547,6 +662,7 @@ class Game {
     async useArchitectAbility(architect, targetRow, targetCol) {
         const tile = this.board[targetRow][targetCol];
         if (!tile.spaceCard || tile.spaceCard.owner === architect.owner) return;
+        if (!this.isSpaceCardVisibleTo(tile.spaceCard, architect.owner)) return;
 
         const sc = tile.spaceCard;
         if (sc.type === 'one-time' && !sc.used) {
@@ -711,7 +827,8 @@ class Game {
         $('#ap-value').textContent = this.currentTurn === 'player' ? this.playerAP : this.enemyAP;
         $('#player-score').textContent = this.playerScore;
         $('#enemy-score').textContent = this.enemyScore;
-        $('#deck-count').textContent = this.currentTurn === 'player' ? this.playerDeck.length : this.enemyDeck.length;
+        $('#deck-count').textContent = `Deck ${this.currentTurn === 'player' ? this.playerDeck.length : this.enemyDeck.length}`;
+        $('#hand-count').textContent = `Hand ${this.currentTurn === 'player' ? this.playerHand.length : this.enemyHand.length}`;
 
         // Update score labels for hotseat
         const playerLabel = $('#player-label');
@@ -732,6 +849,52 @@ class Game {
 
         this.renderBoard();
         this.renderHand();
+        this.updateSpaceActionPanel();
+    }
+
+    updateSpaceActionPanel() {
+        const panel = $('#space-action-panel');
+        if (!panel) return;
+
+        if (!this.selectedSpaceCard) {
+            panel.classList.add('hidden');
+            return;
+        }
+
+        const { row, col } = this.selectedSpaceCard;
+        const tile = this.board[row][col];
+        const sc = tile.spaceCard;
+        if (!sc) {
+            panel.classList.add('hidden');
+            return;
+        }
+
+        const title = $('#space-action-title');
+        const desc = $('#space-action-desc');
+        const activateBtn = $('#btn-activate-space');
+        const selectUnitBtn = $('#btn-select-unit-from-space');
+        const currentAP = this.currentTurn === 'player' ? this.playerAP : this.enemyAP;
+
+        if (title) title.textContent = `${sc.emoji} ${sc.name}`;
+        if (desc) {
+            const status = sc.disabled ? `Disabled (${sc.disabledRounds} rounds)` : (sc.used || sc.activated ? 'Activated' : 'Ready');
+            let needsUnit = '';
+            if (sc.id !== 'tower' && !tile.unit) {
+                needsUnit = ' Needs a troop on this tile.';
+            } else if (sc.id !== 'tower' && sc.id !== 'volcano' && tile.unit.owner !== this.currentTurn) {
+                needsUnit = ' Needs one of your troops on this tile.';
+            }
+            desc.textContent = `${sc.effect} Status: ${status}.${needsUnit}`;
+        }
+        if (activateBtn) {
+            activateBtn.disabled = !this.canActivateSpaceCard(row, col);
+            activateBtn.textContent = currentAP < 1 ? 'Need 1 AP' : 'Activate Space Card (1 AP)';
+        }
+        if (selectUnitBtn) {
+            selectUnitBtn.classList.toggle('hidden', !tile.unit || tile.unit.owner !== this.currentTurn);
+        }
+
+        panel.classList.remove('hidden');
     }
 
     renderBoard() {
@@ -750,6 +913,7 @@ class Game {
                 tileEl.classList.add(`${territory}-territory`);
 
                 const currentOwner = this.currentTurn;
+                const viewerOwner = this.getViewerOwner();
 
                 if (this.selectedCard) {
                     if (this.canDeploy(currentOwner, r, c)) {
@@ -761,15 +925,27 @@ class Game {
                     const { unit, row: ur, col: uc } = this.selectedUnit;
                     const dist = getDistance(ur, uc, r, c);
 
-                    if (!tile.unit && dist <= unit.moveRange && !this.unitsActed.has(unit.instanceId)) {
+                    if (!tile.unit && dist <= unit.moveRange && !this.unitsActed.has(unit.instanceId) && !unit.volcanoEffect) {
                         tileEl.classList.add('highlight-move');
                     }
 
                     if (tile.unit && tile.unit.owner !== currentOwner && dist <= unit.attackRange) {
-                        if ((unit.id !== 'archer' && unit.id !== 'pikeman') || hasLineOfSight(this.board, ur, uc, r, c)) {
+                        const canHighlightAttack =
+                            (unit.id !== 'archer' && unit.id !== 'pikeman') ||
+                            (unit.id === 'archer' && isStraightLineAttack(ur, uc, r, c)) ||
+                            (unit.id === 'pikeman' && hasLineOfSight(this.board, ur, uc, r, c));
+                        if (canHighlightAttack) {
                             tileEl.classList.add('highlight-attack');
                         }
                     }
+                }
+
+                if (tile.spaceCard && tile.spaceCard.owner === currentOwner && currentOwner === viewerOwner) {
+                    tileEl.classList.add('space-activatable');
+                }
+
+                if (this.selectedSpaceCard && this.selectedSpaceCard.row === r && this.selectedSpaceCard.col === c) {
+                    tileEl.classList.add('selected-space');
                 }
 
                 const coords = document.createElement('span');
@@ -777,9 +953,11 @@ class Game {
                 coords.textContent = CONSTANTS.COORDS[r][c];
                 tileEl.appendChild(coords);
 
-                if (tile.spaceCard) {
+                if (this.isSpaceCardVisibleTo(tile.spaceCard, viewerOwner)) {
                     const overlay = document.createElement('div');
                     overlay.className = 'space-overlay';
+                    if (tile.spaceCard.activated || tile.spaceCard.used) overlay.classList.add('activated');
+                    if (tile.spaceCard.disabled) overlay.classList.add('disabled');
                     overlay.textContent = tile.spaceCard.emoji;
                     tileEl.appendChild(overlay);
                 }
@@ -845,15 +1023,15 @@ class Game {
 
         // Update panel header for hotseat
         const panelTitle = document.querySelector('#left-panel .panel-title');
-        const deckCount = document.querySelector('#left-panel .deck-count');
+        const deckCount = $('#deck-count');
+        const handCount = $('#hand-count');
         if (panelTitle) {
             panelTitle.textContent = this.gameMode === 'hotseat' 
                 ? (this.currentTurn === 'player' ? "Player 1 Hand" : "Player 2 Hand")
                 : "Your Hand";
         }
-        if (deckCount) {
-            deckCount.textContent = currentDeck.length;
-        }
+        if (handCount) handCount.textContent = `Hand ${currentHand.length}`;
+        if (deckCount) deckCount.textContent = `Deck ${currentDeck.length}`;
 
         currentHand.forEach((card, index) => {
             const cardEl = document.createElement('div');
@@ -912,8 +1090,18 @@ class Game {
             <div class="info-row"><span class="info-label">Score Value</span><span class="info-value">${score} pts</span></div>
         `;
 
-        if (tile.spaceCard) {
-            html += `<div class="info-row"><span class="info-label">Space Card</span><span class="info-value">${tile.spaceCard.name}</span></div>`;
+        if (this.isSpaceCardVisibleTo(tile.spaceCard, this.getViewerOwner())) {
+            const sc = tile.spaceCard;
+            const status = sc.disabled ? `Disabled (${sc.disabledRounds})` : (sc.used || sc.activated ? 'Activated' : 'Ready');
+            html += `
+                <div class="info-row"><span class="info-label">Space Card</span><span class="info-value">${sc.emoji} ${sc.name}</span></div>
+                <div class="info-row"><span class="info-label">Type</span><span class="info-value">${sc.type}</span></div>
+                <div class="info-row"><span class="info-label">Status</span><span class="info-value">${status}</span></div>
+                <div class="info-ability">
+                    <div class="info-ability-name">Space Effect</div>
+                    <div class="info-ability-desc">${sc.effect}</div>
+                </div>
+            `;
         }
 
         details.innerHTML = html;

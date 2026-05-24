@@ -15,18 +15,21 @@ class AI {
         const moveActions = this.getMoveActions();
         const attackActions = this.getAttackActions();
         const abilityActions = this.getAbilityActions();
+        const spaceActions = this.getSpaceCardActions();
 
         // Score and sort actions
         const scoredDeploys = deployActions.map(a => ({ ...a, score: this.scoreDeploy(a) }));
         const scoredMoves = moveActions.map(a => ({ ...a, score: this.scoreMove(a) }));
         const scoredAttacks = attackActions.map(a => ({ ...a, score: this.scoreAttack(a) }));
         const scoredAbilities = abilityActions.map(a => ({ ...a, score: this.scoreAbility(a) }));
+        const scoredSpaces = spaceActions.map(a => ({ ...a, score: this.scoreSpaceCard(a) }));
 
         // Sort by score descending
         scoredDeploys.sort((a, b) => b.score - a.score);
         scoredMoves.sort((a, b) => b.score - a.score);
         scoredAttacks.sort((a, b) => b.score - a.score);
         scoredAbilities.sort((a, b) => b.score - a.score);
+        scoredSpaces.sort((a, b) => b.score - a.score);
 
         // Execute best actions until AP runs out
         const actedUnits = new Set();
@@ -48,6 +51,16 @@ class AI {
             // Consider abilities
             for (const action of scoredAbilities) {
                 if (action.unit.apCost <= ap && !actedUnits.has(action.unit.instanceId)) {
+                    if (action.score > bestScore) {
+                        bestScore = action.score;
+                        bestAction = action;
+                    }
+                }
+            }
+
+            // Consider deliberate space-card activation
+            for (const action of scoredSpaces) {
+                if (action.apCost <= ap) {
                     if (action.score > bestScore) {
                         bestScore = action.score;
                         bestAction = action;
@@ -97,6 +110,9 @@ class AI {
             } else if (bestAction.type === 'ability') {
                 ap -= bestAction.apCost || 1;
                 actedUnits.add(bestAction.unit.instanceId);
+            } else if (bestAction.type === 'space') {
+                ap -= bestAction.apCost || 1;
+                bestAction.card.activated = true;
             }
         }
 
@@ -212,7 +228,8 @@ class AI {
                     const adjacent = getAdjacentTiles(r, c);
                     for (const adj of adjacent) {
                         const adjTile = this.game.board[adj.row][adj.col];
-                        if (adjTile.spaceCard && adjTile.spaceCard.owner === 'player' && !adjTile.spaceCard.disabled) {
+                        if (adjTile.spaceCard && adjTile.spaceCard.owner === 'player' && !adjTile.spaceCard.disabled &&
+                            this.game.isSpaceCardVisibleTo(adjTile.spaceCard, 'enemy')) {
                             actions.push({
                                 type: 'ability',
                                 ability: 'architect',
@@ -230,27 +247,31 @@ class AI {
         return actions;
     }
 
+    getSpaceCardActions() {
+        const actions = [];
 
-                    if (this.game.popeCooldowns.enemy > 0) continue;
-                    if (this.game.unitsActed.has(unit.instanceId)) continue;
+        for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
+            for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
+                const tile = this.game.board[r][c];
+                const sc = tile.spaceCard;
+                if (!sc || sc.owner !== 'enemy' || sc.disabled || sc.used || sc.activated) continue;
+                if (sc.id !== 'tower' && !tile.unit) continue;
+                if (sc.id !== 'tower' && sc.id !== 'volcano' && tile.unit.owner !== 'enemy') continue;
 
-                    const adjacent = getAdjacentTiles(r, c);
-                    for (const adj of adjacent) {
-                        const adjUnit = this.game.board[adj.row][adj.col].unit;
-                        if (adjUnit && adjUnit.owner === 'player' && 
-                            adjUnit.id !== 'king' && adjUnit.id !== 'knight') {
-                            actions.push({
-                                type: 'ability',
-                                ability: 'convert',
-                                unit,
-                                targetRow: adj.row,
-                                targetCol: adj.col,
-                                apCost: adjUnit.apCost
-                            });
-                        }
-                    }
-                }
+                actions.push({
+                    type: 'space',
+                    card: sc,
+                    row: r,
+                    col: c,
+                    unit: tile.unit,
+                    apCost: 1
+                });
             }
+        }
+
+        return actions;
+    }
+
     // ===== SCORING =====
 
     scoreDeploy(action) {
@@ -439,5 +460,21 @@ class AI {
         else if (this.difficulty === 'hard') score *= 1.3;
 
         return score;
+    }
+
+    scoreSpaceCard(action) {
+        const { card, unit } = action;
+        if (card.id === 'tower') return 45;
+        if (!unit) return -100;
+
+        if (card.id === 'health_potion') {
+            const maxHp = unit.maxHealth || unit.health;
+            return Math.max(0, maxHp - unit.currentHealth);
+        }
+        if (card.id === 'shield') return unit.owner === 'enemy' ? 35 : 10;
+        if (card.id === 'rage_potion') return unit.owner === 'enemy' && unit.attack > 0 ? 40 + unit.attack : 5;
+        if (card.id === 'castle') return unit.owner === 'enemy' ? 50 : 5;
+        if (card.id === 'volcano') return unit.owner === 'player' ? 55 : 0;
+        return 0;
     }
 }
