@@ -45,6 +45,13 @@ function initEventListeners() {
     });
 
     // Space Placement
+    $('#btn-randomize-placement').addEventListener('click', () => {
+        if (!game) return;
+        const owner = hotseatPhase === 'player2' ? 'enemy' : 'player';
+        randomizeSpacePlacement(owner);
+        if (audioManager) audioManager.playClick();
+    });
+
     $('#btn-start-match').addEventListener('click', () => {
         if (!game) return;
         if (game.gameMode === 'hotseat' && hotseatPhase === 'player1') {
@@ -232,23 +239,26 @@ function initSpacePlacement() {
     }
 
     // Draw space cards
-    const spaceDeck = buildSpaceDeck();
-    game.playerSpaceCards = spaceDeck.slice(0, 3).map(c => ({ ...c }));
-    game.enemySpaceCards = spaceDeck.slice(3, 6).map(c => ({ ...c }));
+    const playerSpaceDeck = buildSpaceDeck();
+    const enemySpaceDeck = buildSpaceDeck();
+    game.playerSpaceCards = playerSpaceDeck.map(c => ({ ...c }));
+    game.enemySpaceCards = enemySpaceDeck.map(c => ({ ...c }));
 
-    // Auto-place enemy space cards (AI or Player 2 hidden)
-    const enemyTiles = [];
-    for (let r = 0; r <= 1; r++) {
-        for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
-            enemyTiles.push({ row: r, col: c });
+    // Auto-place enemy space cards only in non-hotseat modes
+    if (game.gameMode !== 'hotseat') {
+        const enemyTiles = [];
+        for (let r = 0; r <= 1; r++) {
+            for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
+                enemyTiles.push({ row: r, col: c });
+            }
         }
+        shuffleArray(enemyTiles);
+        game.enemySpaceCards.forEach((card, i) => {
+            if (enemyTiles[i]) {
+                card.placedAt = enemyTiles[i];
+            }
+        });
     }
-    shuffleArray(enemyTiles);
-    game.enemySpaceCards.forEach((card, i) => {
-        if (enemyTiles[i]) {
-            card.placedAt = enemyTiles[i];
-        }
-    });
 
     renderSpacePlacementUI(game.playerSpaceCards, 'player');
 }
@@ -284,6 +294,7 @@ function renderSpacePlacementUI(cards, owner) {
             <div class="space-card-name">${card.name}</div>
         `;
         cardEl.addEventListener('click', () => {
+            if (cards[index].placedAt) return;
             $$('.space-card-item').forEach(el => el.classList.remove('selected'));
             cardEl.classList.add('selected');
             selectedCardIndex = index;
@@ -316,20 +327,45 @@ function renderSpacePlacementUI(cards, owner) {
             }
 
             tileEl.addEventListener('click', () => {
-                if (selectedCardIndex === -1) return;
-
                 const isPlayer1 = owner === 'player';
                 if (isPlayer1 && r < 3) return;
                 if (!isPlayer1 && r > 1) return;
 
-                // Check if already occupied
+                // Check if tile is already occupied
                 const existing = cards.find(pc => pc.placedAt && pc.placedAt.row === r && pc.placedAt.col === c);
-                if (existing) return;
+                
+                if (existing) {
+                    // Remove the card from this tile
+                    const cardIndex = cards.indexOf(existing);
+                    cards[cardIndex].placedAt = null;
+                    
+                    const cardEl = $$('.space-card-item')[cardIndex];
+                    if (cardEl) {
+                        cardEl.classList.remove('placed');
+                    }
+                    
+                    tileEl.textContent = '';
+                    tileEl.classList.remove('occupied');
+                    
+                    const allPlaced = cards.every(c => c.placedAt);
+                    if (startBtn) startBtn.disabled = !allPlaced;
+                    return;
+                }
 
-                cards[selectedCardIndex].placedAt = { row: r, col: c };
+                if (selectedCardIndex === -1) return;
+
+                const selectedCard = cards[selectedCardIndex];
+                selectedCard.placedAt = { row: r, col: c };
+
+                const placedCardEl = $$('.space-card-item')[selectedCardIndex];
+                if (placedCardEl) {
+                    placedCardEl.classList.remove('selected');
+                    placedCardEl.classList.add('placed');
+                }
+                selectedCardIndex = -1;
 
                 // Update tile visually
-                tileEl.textContent = cards[selectedCardIndex].emoji;
+                tileEl.textContent = selectedCard.emoji;
                 tileEl.classList.add('occupied');
 
                 const allPlaced = cards.every(c => c.placedAt);
@@ -340,3 +376,45 @@ function renderSpacePlacementUI(cards, owner) {
         }
     }
 }
+
+function randomizeSpacePlacement(owner) {
+    const cards = owner === 'player' ? game.playerSpaceCards : game.enemySpaceCards;
+    const startBtn = $('#btn-start-match');
+    
+    // Get available tiles for this player
+    const isPlayer1 = owner === 'player';
+    const availableTiles = [];
+    for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
+        for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
+            if (isPlayer1 && r < 3) continue;
+            if (!isPlayer1 && r > 1) continue;
+            availableTiles.push({ row: r, col: c });
+        }
+    }
+    
+    shuffleArray(availableTiles);
+    
+    // Clear existing placements
+    cards.forEach(card => {
+        card.placedAt = null;
+    });
+    
+    // Place each card on a random available tile
+    cards.forEach((card, index) => {
+        if (availableTiles[index]) {
+            card.placedAt = availableTiles[index];
+        }
+    });
+    
+    // Refresh the UI
+    const boardEl = $('#placement-board');
+    const handEl = $('#space-card-hand');
+    boardEl.innerHTML = '';
+    handEl.innerHTML = '';
+    
+    renderSpacePlacementUI(cards, owner);
+    
+    const allPlaced = cards.every(c => c.placedAt);
+    if (startBtn) startBtn.disabled = !allPlaced;
+}
+

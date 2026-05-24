@@ -52,7 +52,7 @@ const CONSTANTS = {
     POPE_COOLDOWN: 2,
 
     // Space cards
-    SPACE_CARDS_PER_PLAYER: 3,
+    SPACE_CARDS_PER_PLAYER: 6,
 
     // Animation speeds
     ANIM_SPEED: {
