@@ -3,6 +3,7 @@
 let game = null;
 let audioManager = null;
 let hotseatPhase = 'player1'; // 'player1' or 'player2' for space placement
+let pendingMatchVariant = 'standard';
 
 document.addEventListener('DOMContentLoaded', () => {
     initAudio();
@@ -16,6 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
 function initEventListeners() {
     // Main Menu
     $('#btn-vs-ai').addEventListener('click', () => {
+        pendingMatchVariant = 'standard';
+        updateDifficultyTitle();
+        showScreen('difficulty-select');
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-quick-match').addEventListener('click', () => {
+        pendingMatchVariant = 'quick';
+        updateDifficultyTitle();
         showScreen('difficulty-select');
         if (audioManager) audioManager.playClick();
     });
@@ -40,6 +50,7 @@ function initEventListeners() {
     $('#btn-normal').addEventListener('click', () => startAIGame('normal'));
     $('#btn-hard').addEventListener('click', () => startAIGame('hard'));
     $('#btn-back-diff').addEventListener('click', () => {
+        pendingMatchVariant = 'standard';
         showScreen('main-menu');
         if (audioManager) audioManager.playClick();
     });
@@ -211,10 +222,20 @@ function initEventListeners() {
     $('#anim-speed').value = animSpeed;
 }
 
-function startAIGame(difficulty) {
+function updateDifficultyTitle() {
+    const title = $('#difficulty-title');
+    if (!title) return;
+    title.textContent = pendingMatchVariant === 'quick'
+        ? 'Select Quick Match Difficulty'
+        : 'Select Difficulty';
+}
+
+function startAIGame(difficulty, variant = pendingMatchVariant) {
     game = new Game();
     game.difficulty = difficulty;
     game.gameMode = 'vs_ai';
+    game.configureMatch(variant);
+    pendingMatchVariant = 'standard';
     showScreen('space-placement');
     initSpacePlacement();
     if (audioManager) audioManager.playClick();
@@ -223,6 +244,8 @@ function startAIGame(difficulty) {
 function startHotseatGame() {
     game = new Game();
     game.gameMode = 'hotseat';
+    game.configureMatch('standard');
+    pendingMatchVariant = 'standard';
     hotseatPhase = 'player1';
     showScreen('space-placement');
     initSpacePlacement();

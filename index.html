@@ -36,6 +36,10 @@
                         <span class="btn-icon">⚔️</span>
                         VS AI
                     </button>
+                    <button id="btn-quick-match" class="menu-btn">
+                        <span class="btn-icon">Q</span>
+                        Quick Match
+                    </button>
                     <button id="btn-hotseat" class="menu-btn">
                         <span class="btn-icon">🎮</span>
                         Hotseat Multiplayer
@@ -60,7 +64,7 @@
         <div id="difficulty-select" class="screen">
             <div class="screen-bg"></div>
             <div class="screen-content">
-                <h2>Select Difficulty</h2>
+                <h2 id="difficulty-title">Select Difficulty</h2>
                 <div class="difficulty-buttons">
                     <button id="btn-easy" class="difficulty-btn">
                         <span class="diff-icon">🌱</span>
@@ -104,7 +108,7 @@
                     <div class="round-info">
                         <span class="round-label">ROUND</span>
                         <span id="round-number" class="round-number">1</span>
-                        <span class="round-total">/ 10</span>
+                        <span id="round-total" class="round-total">/ 10</span>
                     </div>
                 </div>
                 <div class="top-section center">
@@ -248,23 +252,51 @@
         <!-- Tutorial Overlay -->
         <div id="tutorial-overlay" class="overlay">
             <div class="overlay-content wide">
-                <h2>How to Play</h2>
+                <h2>Game Rules</h2>
                 <div class="tutorial-content">
                     <div class="tutorial-section">
-                        <h3>🎯 Objective</h3>
-                        <p>Control territories to score points. Highest score after 10 rounds wins!</p>
+                        <h3>Objective</h3>
+                        <p>Play 10 rounds on a 5x4 board. Control territory with surviving troops to score points at the end of each round. Highest score wins, unless a King is slain first.</p>
                     </div>
                     <div class="tutorial-section">
-                        <h3>⚔️ Combat</h3>
-                        <p>Deploy troops, move them, and attack enemies. Each action costs AP (Action Points).</p>
+                        <h3>Round Flow</h3>
+                        <p>Each round starts with both players drawing 1 troop card. Player 1 takes a turn with 3 AP, then Player 2 or the AI takes a turn with 3 AP. AP resets every turn and unused AP is lost.</p>
                     </div>
                     <div class="tutorial-section">
-                        <h3>🏰 Territories</h3>
-                        <p>Enemy territory = 20 pts | Neutral = 10 pts | Your territory = 5 pts. Control more = win more!</p>
+                        <h3>Deck and Hand</h3>
+                        <p>Each player has a 15-card troop deck and starts with 5 cards in hand. The first draw phase brings the opening turn hand to 6 cards. Deployed troop cards leave your hand.</p>
                     </div>
                     <div class="tutorial-section">
-                        <h3>👑 The King</h3>
-                        <p>Protect your King! If he dies, you lose 100 points instantly. He buffs nearby allies.</p>
+                        <h3>AP Costs</h3>
+                        <p>Deploying a troop costs that card's AP. Moving costs 1 AP, attacking costs 1 AP, Architect space-card disruption costs 1 AP, and activating any space card costs 1 AP.</p>
+                    </div>
+                    <div class="tutorial-section">
+                        <h3>Territory Scoring</h3>
+                        <p>Rows A-B are the top player's territory, row C is neutral, and rows D-E are the bottom player's territory. Own territory scores 5, neutral scores 10, enemy territory scores 20. Rounds 8-10 score double.</p>
+                    </div>
+                    <div class="tutorial-section">
+                        <h3>Movement and Attacks</h3>
+                        <p>Movement is orthogonal, one troop per tile. Most troops act once per turn. Swordsmen are short-range fighters. Knights can move up to 2 and may move then attack. Archers attack in straight lines through intervening units; Pikemen attack in straight lines only if the path is clear.</p>
+                    </div>
+                    <div class="tutorial-section">
+                        <h3>Special Troops</h3>
+                        <p>The Pope can attempt a 30% conversion on an adjacent non-King, non-Knight troop; converted units are stunned and the Pope has a 2-round cooldown. The Architect can disrupt adjacent visible enemy space cards, disabling permanent cards or destroying unactivated one-time cards.</p>
+                    </div>
+                    <div class="tutorial-section">
+                        <h3>The King</h3>
+                        <p>Protect your King. If your King dies, you lose immediately. A King in own territory gives allied troops in own territory +15 max health. A King pushed into enemy territory empowers allied troops there with +20 attack and +15 max health.</p>
+                    </div>
+                    <div class="tutorial-section">
+                        <h3>Space Cards</h3>
+                        <p>Before the match, each player places 6 space cards in their own territory. Opponent space cards stay hidden until activated or used. Click one of your space-card tiles during your turn to reveal the bottom activation option.</p>
+                    </div>
+                    <div class="tutorial-section">
+                        <h3>Space Effects</h3>
+                        <p>Castle gives a troop on its tile +40 max health. Tower fires 5 damage at adjacent enemies at the start of its owner's turns. Volcano stops a troop from moving this turn and makes it take 50% more damage. Shield blocks the next incoming damage. Rage Potion doubles the next attack. Health Potion restores a troop to full health.</p>
+                    </div>
+                    <div class="tutorial-section">
+                        <h3>Game Modes</h3>
+                        <p>VS AI plays against Easy, Normal, or Hard AI. Quick Match uses the same rules in a 5-round match with round 5 scoring double. Hotseat lets two local players alternate turns on the same device, with each player only seeing their own hidden space cards until cards are activated.</p>
                     </div>
                 </div>
                 <button id="btn-close-tutorial" class="overlay-btn">Got it!</button>

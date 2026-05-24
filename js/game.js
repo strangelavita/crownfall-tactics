@@ -23,6 +23,10 @@ class Game {
         this.unitsActed = new Set();
         this.difficulty = 'normal';
         this.gameMode = 'vs_ai';
+        this.matchVariant = 'standard';
+        this.totalRounds = CONSTANTS.TOTAL_ROUNDS;
+        this.doubleScoreRounds = [...CONSTANTS.FINAL_ROUNDS];
+        this.finalRoundScored = false;
         this.isGameOver = false;
         this.kingAlive = { player: true, enemy: true };
         this.popeCooldowns = { player: 0, enemy: 0 };
@@ -44,6 +48,21 @@ class Game {
         this.selectedUnit = null;
         this.selectedSpaceCard = null;
         this.drawStartingHands();
+    }
+
+    configureMatch(variant = 'standard') {
+        this.matchVariant = variant;
+        if (variant === 'quick') {
+            this.totalRounds = CONSTANTS.QUICK_MATCH_TOTAL_ROUNDS;
+            this.doubleScoreRounds = [...CONSTANTS.QUICK_MATCH_DOUBLE_ROUNDS];
+        } else {
+            this.totalRounds = CONSTANTS.TOTAL_ROUNDS;
+            this.doubleScoreRounds = [...CONSTANTS.FINAL_ROUNDS];
+        }
+    }
+
+    isDoubleScoreRound(round = this.round) {
+        return this.doubleScoreRounds.includes(round);
     }
 
     initBoard() {
@@ -81,6 +100,7 @@ class Game {
     startMatch() {
         this.round = 1; this.playerScore = 0; this.enemyScore = 0;
         this.phase = CONSTANTS.PHASE.DRAW; this.currentTurn = 'player';
+        this.finalRoundScored = false;
         this.isGameOver = false;
         this.kingAlive = { player: true, enemy: true };
         this.popeCooldowns = { player: 0, enemy: 0 };
@@ -184,7 +204,7 @@ class Game {
         this.clearVolcanoEffects('enemy');
         this.phase = CONSTANTS.PHASE.RESOLUTION;
         await this.resolutionPhase();
-        if (this.round >= CONSTANTS.TOTAL_ROUNDS) {
+        if (this.round >= this.totalRounds) {
             await this.endGame();
             return;
         }
@@ -215,12 +235,15 @@ class Game {
         const playerTerritoryScore = this.calculateTerritoryScore('player');
         const enemyTerritoryScore = this.calculateTerritoryScore('enemy');
         let multiplier = 1;
-        if (CONSTANTS.FINAL_ROUNDS.includes(this.round)) {
+        if (this.isDoubleScoreRound()) {
             multiplier = CONSTANTS.SCORE_FINAL_MULTIPLIER;
             logAction(`Final round! Scoring x${multiplier}`, 'system');
         }
         this.playerScore += playerTerritoryScore * multiplier;
         this.enemyScore += enemyTerritoryScore * multiplier;
+        if (this.round >= this.totalRounds) {
+            this.finalRoundScored = true;
+        }
         logAction(`Player scored ${playerTerritoryScore * multiplier} points`, 'player');
         logAction(`Enemy scored ${enemyTerritoryScore * multiplier} points`, 'enemy');
         this.updateUI();
@@ -824,6 +847,8 @@ class Game {
 
     updateUI() {
         $('#round-number').textContent = this.round;
+        const roundTotal = $('#round-total');
+        if (roundTotal) roundTotal.textContent = `/ ${this.totalRounds}`;
         $('#ap-value').textContent = this.currentTurn === 'player' ? this.playerAP : this.enemyAP;
         $('#player-score').textContent = this.playerScore;
         $('#enemy-score').textContent = this.enemyScore;
@@ -1137,12 +1162,11 @@ class Game {
         if (this.isGameOver) return;
         this.isGameOver = true;
 
-        // Only add final territory scores if game ended naturally (all 10 rounds)
-        // If king died mid-game, scores are already applied from resolution phase
-        if (this.kingAlive.player && this.kingAlive.enemy) {
+        // Natural game end arrives after the final resolution phase, so avoid scoring it twice.
+        if (this.kingAlive.player && this.kingAlive.enemy && !this.finalRoundScored) {
             const playerTerritoryScore = this.calculateTerritoryScore('player');
             const enemyTerritoryScore = this.calculateTerritoryScore('enemy');
-            let multiplier = CONSTANTS.FINAL_ROUNDS.includes(this.round) ? CONSTANTS.SCORE_FINAL_MULTIPLIER : 1;
+            let multiplier = this.isDoubleScoreRound() ? CONSTANTS.SCORE_FINAL_MULTIPLIER : 1;
             this.playerScore += playerTerritoryScore * multiplier;
             this.enemyScore += enemyTerritoryScore * multiplier;
         }
