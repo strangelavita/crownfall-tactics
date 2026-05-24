@@ -117,7 +117,7 @@ const UNITS = {
         moveRange: 2,
         apCost: 2,
         copies: 2,
-        ability: 'Can move then attack, attack only, or move only.',
+        ability: 'Can move 2 spaces, if it only moves for 1 space it gains charge dealing double damage.',
         role: 'Aggressive mobile bruiser.'
     },
     POPE: {

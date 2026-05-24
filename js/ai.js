@@ -139,26 +139,30 @@ class AI {
 
     getMoveActions() {
         const actions = [];
-
         for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
             for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
                 const unit = this.game.board[r][c].unit;
-                if (unit && unit.owner === 'enemy' && !this.game.unitsActed.has(unit.instanceId)) {
-                    const moves = getValidMoves(this.game.board, unit, r, c);
-                    for (const move of moves) {
-                        actions.push({
-                            type: 'move',
-                            unit,
-                            fromRow: r,
-                            fromCol: c,
-                            toRow: move.row,
-                            toCol: move.col
-                        });
+                if (unit && unit.owner === 'enemy') {
+                    if (this.game.stunnedUnits.has(unit.instanceId)) continue;
+                    const canMove = unit.id === 'knight'
+                        ? !unit.hasMoved
+                        : !this.game.unitsActed.has(unit.instanceId);
+                    if (canMove) {
+                        const moves = getValidMoves(this.game.board, unit, r, c);
+                        for (const move of moves) {
+                            actions.push({
+                                type: 'move',
+                                unit,
+                                fromRow: r,
+                                fromCol: c,
+                                toRow: move.row,
+                                toCol: move.col
+                            });
+                        }
                     }
                 }
             }
         }
-
         return actions;
     }
 
@@ -169,8 +173,10 @@ class AI {
             for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
                 const unit = this.game.board[r][c].unit;
                 if (unit && unit.owner === 'enemy' && unit.attack > 0) {
-                    const canAttack = !this.game.unitsActed.has(unit.instanceId) || 
-                                     (unit.id === 'knight' && !this.game.unitsActed.has(`${unit.instanceId}_attacked`));
+                    if (this.game.stunnedUnits.has(unit.instanceId)) continue;
+                    const canAttack = unit.id === 'knight'
+                        ? !unit.hasAttacked
+                        : !this.game.unitsActed.has(unit.instanceId);
                     if (canAttack) {
                         const attacks = getValidAttacks(this.game.board, unit, r, c, 'enemy');
                         for (const attack of attacks) {
@@ -194,20 +200,21 @@ class AI {
 
     getAbilityActions() {
         const actions = [];
-
         for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
             for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
                 const unit = this.game.board[r][c].unit;
+                if (!unit || unit.owner !== 'enemy') continue;
+                if (this.game.stunnedUnits.has(unit.instanceId)) continue;
 
                 // Pope convert
-                if (unit && unit.owner === 'enemy' && unit.id === 'pope') {
+                if (unit.id === 'pope') {
                     if (this.game.popeCooldowns.enemy > 0) continue;
                     if (this.game.unitsActed.has(unit.instanceId)) continue;
 
                     const adjacent = getAdjacentTiles(r, c);
                     for (const adj of adjacent) {
                         const adjUnit = this.game.board[adj.row][adj.col].unit;
-                        if (adjUnit && adjUnit.owner === 'player' && 
+                        if (adjUnit && adjUnit.owner === 'player' &&
                             adjUnit.id !== 'king' && adjUnit.id !== 'knight') {
                             actions.push({
                                 type: 'ability',
@@ -222,7 +229,7 @@ class AI {
                 }
 
                 // Architect disable/destroy
-                if (unit && unit.owner === 'enemy' && unit.id === 'architect') {
+                if (unit.id === 'architect') {
                     if (this.game.unitsActed.has(unit.instanceId)) continue;
 
                     const adjacent = getAdjacentTiles(r, c);
@@ -243,7 +250,6 @@ class AI {
                 }
             }
         }
-
         return actions;
     }
 

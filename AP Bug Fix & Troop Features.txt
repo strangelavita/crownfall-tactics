@@ -1,0 +1,541 @@
+User:
+Refer to code I want to implement a few missed features and fix bugs
+Bug - AP (Action point ) is going in negative every turn we have 3 ap which we can use if its 0 no action should be allowed but I am able to move troops
+Feature - for some reason troop abilities are not implemented for knight, pope and architect please implement these
+fOR GAME RULES REFER TO - https://github.com/strangelavita/crownfall-tactics/blob/main/card%20gamerules.txt RULES ARE ONLY FOR REFERENCE GO THROUGH knight, pope and architect
+project is not empty its available on https://github.com/strangelavita/crownfall-tactics
+In my local its on - C:-tactics
+
+Kimi:
+I’ll start by examining the game rules and the project repository to understand the codebase structure, then implement the fixes.Let me fetch the raw source files directly to examine the code structure.Let me fetch the remaining files to get the full picture.I examined the full codebase. Here are the issues I found and the fixes.
+Issues Found
+Issue	Location	Cause
+AP goes negative	game.js clickTile()	Move, attack, architect, and pope actions deduct AP without checking if currentAP >= cost first
+Knight ability missing	game.js clickTile(), attackUnit(), renderBoard(), ai.js	Knight uses unitsActed like any other unit — after moving it can’t attack, and the “double damage after moving” rule is not implemented
+Pope ability incomplete	game.js clickTile(), selectUnit()	No unitsActed guard (can convert multiple times per turn), no AP cost validation against target’s AP cost, and stunned units can still move/attack
+Architect ability incomplete	game.js clickTile(), renderBoard()	No unitsActed guard (can spam ability), no AP validation, and no UI highlight for valid targets
+AI doesn’t spend AP	ai.js executeAIAction()	AI calls action methods but never deducts enemyAP or updates unitsActed / knight flags
+
+1. js/game.js — AP Guard + Knight / Pope / Architect Fixes
+Replace startRound() (clears unit action flags)
+async startRound() {
+    logAction(`=== Round ${this.round} ===`, 'system');
+    this.phase = CONSTANTS.PHASE.DRAW;
+    await this.drawPhase();
+    this.phase = CONSTANTS.PHASE.PLAYER_TURN;
+    this.currentTurn = 'player';
+    this.playerAP = CONSTANTS.AP_PER_TURN;
+    this.unitsActed.clear();
+    for (const unit of this.units) {
+        unit.hasMoved = false;
+        unit.hasAttacked = false;
+    }
+    await this.applyTowerDamage('player');
+    this.updateUI();
+    logAction('Player turn begins!', 'player');
+}
+Replace endPlayerTurn() (clears flags for enemy turn)
+async endPlayerTurn() {
+    if (this.currentTurn !== 'player') return;
+    this.selectedCard = null;
+    this.selectedUnit = null;
+    this.selectedSpaceCard = null;
+    this.clearVolcanoEffects('player');
+    this.currentTurn = 'enemy';
+    this.phase = CONSTANTS.PHASE.ENEMY_TURN;
+    this.enemyAP = CONSTANTS.AP_PER_TURN;
+    this.unitsActed.clear();
+    for (const unit of this.units) {
+        unit.hasMoved = false;
+        unit.hasAttacked = false;
+    }
+    this.updateUI();
+    logAction('Enemy turn begins!', 'enemy');
+    await this.applyTowerDamage('enemy');
+    if (this.gameMode === 'vs_ai') {
+        await this.executeAITurn();
+    }
+}
+Replace selectUnit() (stun guard)
+selectUnit(row, col) {
+    const tile = this.board[row][col];
+    if (!tile.unit || tile.unit.owner !== this.currentTurn) return;
+    if (this.stunnedUnits.has(tile.unit.instanceId)) {
+        logAction(`${tile.unit.name} is stunned and cannot act!`, 'system');
+        return;
+    }
+    this.selectedUnit = { unit: tile.unit, row, col };
+    this.selectedCard = null;
+    this.selectedSpaceCard = null;
+    this.updateSpaceActionPanel();
+    this.renderBoard();
+    this.renderUnitInfo(tile.unit);
+}
+Replace clickTile() — entire action block
+Keep everything above and below this block as-is. Only replace the middle action-handling section (the // Deploy selected card through // Select unit on tile block).
+    // Deploy selected card
+    if (this.selectedCard) {
+        if (this.canDeploy(currentOwner, row, col)) {
+            const card = this.selectedCard.card;
+            const currentAP = currentOwner === 'player' ? this.playerAP : this.enemyAP;
+            if (currentAP < card.apCost) {
+                logAction('Not enough AP to deploy!', 'system');
+                this.selectedCard = null;
+                this.renderBoard();
+                return;
+            }
+            await this.deployUnit(currentOwner, card, row, col);
+            if (currentOwner === 'player') {
+                this.playerHand.splice(this.selectedCard.index, 1);
+                this.playerAP -= card.apCost;
+            } else {
+                this.enemyHand.splice(this.selectedCard.index, 1);
+                this.enemyAP -= card.apCost;
+            }
+            this.selectedCard = null;
+            this.selectedSpaceCard = null;
+            this.updateSpaceActionPanel();
+            this.updateUI();
+        } else {
+            this.selectedCard = null;
+            this.renderBoard();
+        }
+        return;
+    }
+
+    // Action with selected unit
+    if (this.selectedUnit) {
+        const { unit, row: fromRow, col: fromCol } = this.selectedUnit;
+        const dist = getDistance(fromRow, fromCol, row, col);
+        const currentAP = currentOwner === 'player' ? this.playerAP : this.enemyAP;
+
+        // Stunned check
+        if (this.stunnedUnits.has(unit.instanceId)) {
+            logAction(`${unit.name} is stunned and cannot act!`, 'system');
+            this.selectedUnit = null;
+            this.renderBoard();
+            return;
+        }
+
+        // ?? MOVE ??
+        if (!tile.unit && dist <= unit.moveRange) {
+            const canMove = unit.id === 'knight' ? !unit.hasMoved : !this.unitsActed.has(unit.instanceId);
+            if (!canMove) {
+                logAction(`${unit.name} has already moved!`, 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            if (unit.volcanoEffect) {
+                logAction(`${unit.name} cannot move while affected by Volcano.`, 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            if (currentAP < 1) {
+                logAction('Not enough AP to move!', 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            await this.moveUnit(unit, row, col);
+            if (unit.id === 'knight') {
+                unit.hasMoved = true;
+            } else {
+                this.unitsActed.add(unit.instanceId);
+            }
+            if (currentOwner === 'player') this.playerAP -= 1;
+            else this.enemyAP -= 1;
+            this.selectedUnit = null;
+            this.updateUI();
+            return;
+        }
+
+        // ?? ATTACK ??
+        if (tile.unit && tile.unit.owner !== currentOwner && dist <= unit.attackRange) {
+            if (unit.id === 'archer' && !isStraightLineAttack(fromRow, fromCol, row, col)) {
+                logAction(`${unit.name} can only attack in straight lines!`, 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            if (unit.id === 'pikeman' && !hasLineOfSight(this.board, fromRow, fromCol, row, col)) {
+                logAction(`${unit.name} requires a clear straight line!`, 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            const canAttack = unit.id === 'knight' ? !unit.hasAttacked : !this.unitsActed.has(unit.instanceId);
+            if (!canAttack) {
+                logAction(`${unit.name} has already acted!`, 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            if (currentAP < 1) {
+                logAction('Not enough AP to attack!', 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            await this.attackUnit(unit, row, col);
+            if (unit.id === 'knight') {
+                unit.hasAttacked = true;
+                this.unitsActed.add(unit.instanceId); // Knight fully done after attack
+            } else {
+                this.unitsActed.add(unit.instanceId);
+            }
+            if (currentOwner === 'player') this.playerAP -= 1;
+            else this.enemyAP -= 1;
+            this.selectedUnit = null;
+            this.updateUI();
+            return;
+        }
+
+        // ?? ARCHITECT ABILITY ??
+        if (unit.id === 'architect' && dist <= 1) {
+            if (this.unitsActed.has(unit.instanceId)) {
+                logAction(`${unit.name} has already acted!`, 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            if (currentAP < 1) {
+                logAction('Not enough AP to use ability!', 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            const targetTile = this.board[row][col];
+            if (targetTile.spaceCard && targetTile.spaceCard.owner !== currentOwner && this.isSpaceCardVisibleTo(targetTile.spaceCard, currentOwner)) {
+                const sc = targetTile.spaceCard;
+                if (sc.type === 'one-time' && !sc.used) {
+                    targetTile.spaceCard = null;
+                    logAction(`Architect destroyed ${sc.name}!`, currentOwner);
+                    this.unitsActed.add(unit.instanceId);
+                    if (currentOwner === 'player') this.playerAP -= 1;
+                    else this.enemyAP -= 1;
+                    this.selectedUnit = null;
+                    this.updateUI();
+                    return;
+                } else if (sc.type === 'permanent') {
+                    sc.disabled = true;
+                    sc.disabledRounds = 2;
+                    logAction(`Architect disabled ${sc.name} for 2 rounds!`, currentOwner);
+                    this.unitsActed.add(unit.instanceId);
+                    if (currentOwner === 'player') this.playerAP -= 1;
+                    else this.enemyAP -= 1;
+                    this.selectedUnit = null;
+                    this.updateUI();
+                    return;
+                }
+            }
+        }
+
+        // ?? POPE CONVERT ??
+        if (unit.id === 'pope' && tile.unit && tile.unit.owner !== currentOwner && dist <= 1) {
+            if (this.unitsActed.has(unit.instanceId)) {
+                logAction(`${unit.name} has already acted!`, 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            const cd = currentOwner === 'player' ? this.popeCooldowns.player : this.popeCooldowns.enemy;
+            if (cd > 0) {
+                logAction(`Pope on cooldown (${cd} rounds)`, 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            if (tile.unit.id === 'king' || tile.unit.id === 'knight') {
+                logAction('Cannot convert King or Knight!', 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            const targetAPCost = tile.unit.apCost;
+            if (currentAP < targetAPCost) {
+                logAction(`Not enough AP! Pope convert costs ${targetAPCost} AP.`, 'system');
+                this.selectedUnit = null;
+                this.renderBoard();
+                return;
+            }
+            await this.usePopeConvert(unit, row, col);
+            if (currentOwner === 'player') {
+                this.popeCooldowns.player = CONSTANTS.POPE_COOLDOWN;
+                this.playerAP -= targetAPCost;
+            } else {
+                this.popeCooldowns.enemy = CONSTANTS.POPE_COOLDOWN;
+                this.enemyAP -= targetAPCost;
+            }
+            this.unitsActed.add(unit.instanceId);
+            this.selectedUnit = null;
+            this.updateUI();
+            return;
+        }
+
+        // Clicked elsewhere - deselect unit
+        this.selectedUnit = null;
+        this.renderBoard();
+
+        // If clicked on another own unit, select it
+        if (tile.unit && tile.unit.owner === currentOwner) {
+            this.selectUnit(row, col);
+        }
+        return;
+    }
+Replace attackUnit() (Knight double-damage after move)
+async attackUnit(attacker, targetRow, targetCol) {
+    const targetTile = this.board[targetRow][targetCol];
+    if (!targetTile.unit) return;
+    const target = targetTile.unit;
+    let damage = attacker.attack || 0;
+
+    const attackerPos = this.findUnit(attacker);
+    if (attackerPos) {
+        const king = this.findKing(attacker.owner);
+        if (king) {
+            const kingTerritory = getTerritory(king.row);
+            if (attacker.owner === 'player' && (kingTerritory === 'enemy_core' || kingTerritory === 'enemy_front')) {
+                damage += 20;
+            } else if (attacker.owner === 'enemy' && (kingTerritory === 'player_core' || kingTerritory === 'player_front')) {
+                damage += 20;
+            }
+        }
+    }
+
+    // Knight mobility bonus: double damage if moved this turn
+    if (attacker.id === 'knight' && attacker.hasMoved) {
+        damage *= 2;
+        logAction(`${attacker.name}'s charge doubles attack to ${damage}!`, attacker.owner);
+    }
+
+    if (attacker.ragePotion) { damage *= 2; attacker.ragePotion = false; }
+    if (target.volcanoEffect) { damage = Math.floor(damage * 1.5); }
+    if (target.shield) {
+        damage = 0; target.shield = false;
+        logAction(`${target.name}'s shield blocked the attack!`, 'system');
+    }
+    target.currentHealth -= damage;
+    attacker.hasAttacked = true;
+    this.showDamage(targetRow, targetCol, damage);
+    logAction(`${attacker.name} dealt ${damage} damage to ${target.name}`, attacker.owner);
+    if (target.currentHealth <= 0) {
+        await this.killUnit(targetRow, targetCol);
+    }
+    this.renderBoard();
+    await delay(300);
+}
+Replace renderBoard() — highlight section only
+Keep everything else in renderBoard() the same. Replace only the if (this.selectedUnit) block:
+    if (this.selectedUnit) {
+        const { unit, row: ur, col: uc } = this.selectedUnit;
+        const dist = getDistance(ur, uc, r, c);
+
+        // Move highlights
+        const hasMoved = unit.id === 'knight' ? unit.hasMoved : this.unitsActed.has(unit.instanceId);
+        if (!tile.unit && dist <= unit.moveRange && !hasMoved && !unit.volcanoEffect) {
+            tileEl.classList.add('highlight-move');
+        }
+
+        // Attack highlights
+        const hasAttacked = unit.id === 'knight' ? unit.hasAttacked : this.unitsActed.has(unit.instanceId);
+        if (tile.unit && tile.unit.owner !== currentOwner && dist <= unit.attackRange && !hasAttacked) {
+            const canHighlightAttack =
+                (unit.id !== 'archer' && unit.id !== 'pikeman') ||
+                (unit.id === 'archer' && isStraightLineAttack(ur, uc, r, c)) ||
+                (unit.id === 'pikeman' && hasLineOfSight(this.board, ur, uc, r, c));
+            if (canHighlightAttack) {
+                tileEl.classList.add('highlight-attack');
+            }
+        }
+
+        // Architect ability highlights (adjacent enemy space cards)
+        if (unit.id === 'architect' && dist <= 1 && !this.unitsActed.has(unit.instanceId)) {
+            if (tile.spaceCard && tile.spaceCard.owner !== currentOwner && this.isSpaceCardVisibleTo(tile.spaceCard, currentOwner)) {
+                tileEl.classList.add('highlight-ability');
+            }
+        }
+
+        // Pope convert highlights (adjacent enemy troops)
+        if (unit.id === 'pope' && tile.unit && tile.unit.owner !== currentOwner && dist <= 1 && !this.unitsActed.has(unit.instanceId)) {
+            if (tile.unit.id !== 'king' && tile.unit.id !== 'knight') {
+                tileEl.classList.add('highlight-ability');
+            }
+        }
+    }
+
+2. js/ai.js — AI AP Spending + Knight Support
+Replace executeAIAction() (AI now actually spends AP & tracks state)
+async executeAIAction(action) {
+    switch (action.type) {
+        case 'deploy':
+            await this.deployUnit('enemy', action.card, action.row, action.col);
+            this.enemyAP -= action.card.apCost;
+            break;
+        case 'move':
+            await this.moveUnit(action.unit, action.toRow, action.toCol);
+            this.enemyAP -= 1;
+            if (action.unit.id === 'knight') {
+                action.unit.hasMoved = true;
+            } else {
+                this.unitsActed.add(action.unit.instanceId);
+            }
+            break;
+        case 'attack':
+            await this.attackUnit(action.unit, action.targetRow, action.targetCol);
+            this.enemyAP -= 1;
+            if (action.unit.id === 'knight') {
+                action.unit.hasAttacked = true;
+                this.unitsActed.add(action.unit.instanceId);
+            } else {
+                this.unitsActed.add(action.unit.instanceId);
+            }
+            break;
+        case 'space':
+            await this.activateSpaceCard(action.row, action.col);
+            this.enemyAP -= 1;
+            break;
+        case 'ability':
+            if (action.ability === 'architect') {
+                await this.useArchitectAbility(action.unit, action.targetRow, action.targetCol);
+                this.enemyAP -= action.apCost || 1;
+                this.unitsActed.add(action.unit.instanceId);
+            } else if (action.ability === 'convert') {
+                await this.usePopeConvert(action.unit, action.targetRow, action.targetCol);
+                this.enemyAP -= action.apCost || 1;
+                this.unitsActed.add(action.unit.instanceId);
+            }
+            break;
+    }
+}
+Replace getMoveActions() (stun + knight move flag)
+getMoveActions() {
+    const actions = [];
+    for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
+        for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
+            const unit = this.game.board[r][c].unit;
+            if (unit && unit.owner === 'enemy') {
+                if (this.game.stunnedUnits.has(unit.instanceId)) continue;
+                const canMove = unit.id === 'knight'
+                    ? !unit.hasMoved
+                    : !this.game.unitsActed.has(unit.instanceId);
+                if (canMove) {
+                    const moves = getValidMoves(this.game.board, unit, r, c);
+                    for (const move of moves) {
+                        actions.push({
+                            type: 'move',
+                            unit,
+                            fromRow: r,
+                            fromCol: c,
+                            toRow: move.row,
+                            toCol: move.col
+                        });
+                    }
+                }
+            }
+        }
+    }
+    return actions;
+}
+Replace getAttackActions() (stun + knight attack flag)
+getAttackActions() {
+    const actions = [];
+    for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
+        for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
+            const unit = this.game.board[r][c].unit;
+            if (unit && unit.owner === 'enemy' && unit.attack > 0) {
+                if (this.game.stunnedUnits.has(unit.instanceId)) continue;
+                const canAttack = unit.id === 'knight'
+                    ? !unit.hasAttacked
+                    : !this.game.unitsActed.has(unit.instanceId);
+                if (canAttack) {
+                    const attacks = getValidAttacks(this.game.board, unit, r, c, 'enemy');
+                    for (const attack of attacks) {
+                        actions.push({
+                            type: 'attack',
+                            unit,
+                            fromRow: r,
+                            fromCol: c,
+                            targetRow: attack.row,
+                            targetCol: attack.col,
+                            target: attack.target
+                        });
+                    }
+                }
+            }
+        }
+    }
+    return actions;
+}
+Replace getAbilityActions() (stun guard)
+getAbilityActions() {
+    const actions = [];
+    for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
+        for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
+            const unit = this.game.board[r][c].unit;
+            if (!unit || unit.owner !== 'enemy') continue;
+            if (this.game.stunnedUnits.has(unit.instanceId)) continue;
+
+            // Pope convert
+            if (unit.id === 'pope') {
+                if (this.game.popeCooldowns.enemy > 0) continue;
+                if (this.game.unitsActed.has(unit.instanceId)) continue;
+
+                const adjacent = getAdjacentTiles(r, c);
+                for (const adj of adjacent) {
+                    const adjUnit = this.game.board[adj.row][adj.col].unit;
+                    if (adjUnit && adjUnit.owner === 'player' &&
+                        adjUnit.id !== 'king' && adjUnit.id !== 'knight') {
+                        actions.push({
+                            type: 'ability',
+                            ability: 'convert',
+                            unit,
+                            targetRow: adj.row,
+                            targetCol: adj.col,
+                            apCost: adjUnit.apCost
+                        });
+                    }
+                }
+            }
+
+            // Architect disable/destroy
+            if (unit.id === 'architect') {
+                if (this.game.unitsActed.has(unit.instanceId)) continue;
+
+                const adjacent = getAdjacentTiles(r, c);
+                for (const adj of adjacent) {
+                    const adjTile = this.game.board[adj.row][adj.col];
+                    if (adjTile.spaceCard && adjTile.spaceCard.owner === 'player' && !adjTile.spaceCard.disabled &&
+                        this.game.isSpaceCardVisibleTo(adjTile.spaceCard, 'enemy')) {
+                        actions.push({
+                            type: 'ability',
+                            ability: 'architect',
+                            unit,
+                            targetRow: adj.row,
+                            targetCol: adj.col,
+                            apCost: 1
+                        });
+                    }
+                }
+            }
+        }
+    }
+    return actions;
+}
+
+3. Optional CSS — Ability Target Highlight
+Add to css/style.css so Architect/Pope targets glow purple:
+.highlight-ability {
+    box-shadow: inset 0 0 0 3px #9b59b6 !important;
+    animation: pulse 1.5s infinite;
+}
+
+What Each Fix Does
+Fix	Result
+AP guards	Every action now checks currentAP >= cost before deducting. If AP is 0, the action is blocked and a message is logged.
+Knight	Can move then attack (spends 2 AP). After moving, attack tiles still highlight. If it moved, damage is doubled. “Attack only” and “move only” still work as before.
+Pope	Now properly checks unitsActed (1 convert per turn), checks you have enough AP equal to the target’s cost, and stunned units cannot be selected or act.
+Architect	Now checks unitsActed (1 ability per turn), checks AP, and adjacent enemy space cards are highlighted in purple when Architect is selected.
+AI	The AI now actually spends enemyAP and marks units as acted, so it can’t cheat extra actions. Knight move/attack state is tracked correctly.
+
