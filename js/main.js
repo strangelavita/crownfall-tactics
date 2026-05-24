@@ -1,0 +1,342 @@
+// ===== CROWNFALL TACTICS - MAIN ENTRY POINT =====
+
+let game = null;
+let audioManager = null;
+let hotseatPhase = 'player1'; // 'player1' or 'player2' for space placement
+
+document.addEventListener('DOMContentLoaded', () => {
+    initAudio();
+    initEventListeners();
+    setTimeout(() => {
+        $('#loading-screen').classList.remove('active');
+        showScreen('main-menu');
+    }, 2500);
+});
+
+function initEventListeners() {
+    // Main Menu
+    $('#btn-vs-ai').addEventListener('click', () => {
+        showScreen('difficulty-select');
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-hotseat').addEventListener('click', () => {
+        startHotseatGame();
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-tutorial').addEventListener('click', () => {
+        showOverlay('tutorial-overlay');
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-settings').addEventListener('click', () => {
+        showOverlay('settings-menu');
+        if (audioManager) audioManager.playClick();
+    });
+
+    // Difficulty Select
+    $('#btn-easy').addEventListener('click', () => startAIGame('easy'));
+    $('#btn-normal').addEventListener('click', () => startAIGame('normal'));
+    $('#btn-hard').addEventListener('click', () => startAIGame('hard'));
+    $('#btn-back-diff').addEventListener('click', () => {
+        showScreen('main-menu');
+        if (audioManager) audioManager.playClick();
+    });
+
+    // Space Placement
+    $('#btn-start-match').addEventListener('click', () => {
+        if (!game) return;
+        if (game.gameMode === 'hotseat' && hotseatPhase === 'player1') {
+            hotseatPhase = 'player2';
+            const btn = $('#btn-start-match');
+            if (btn) btn.textContent = 'Continue to Match';
+            initSpacePlacementPlayer2();
+        } else {
+            game.startMatch();
+        }
+        if (audioManager) audioManager.playClick();
+    });
+
+    // Game Screen
+    $('#btn-end-turn').addEventListener('click', () => {
+        if (!game || game.isGameOver) return;
+        if (game.currentTurn === 'player') {
+            game.endPlayerTurn();
+        } else if (game.currentTurn === 'enemy') {
+            if (game.gameMode === 'hotseat') {
+                game.endEnemyTurn();
+            }
+        }
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-pause').addEventListener('click', () => {
+        showOverlay('pause-menu');
+        if (audioManager) audioManager.playClick();
+    });
+
+    // Pause Menu
+    $('#btn-resume').addEventListener('click', () => {
+        hideOverlay('pause-menu');
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-restart').addEventListener('click', () => {
+        hideOverlay('pause-menu');
+        if (game) {
+            game.isGameOver = true;
+            if (game.gameMode === 'hotseat') {
+                showScreen('space-placement');
+                hotseatPhase = 'player1';
+                initSpacePlacement();
+            } else {
+                showScreen('space-placement');
+                initSpacePlacement();
+            }
+        }
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-settings-pause').addEventListener('click', () => {
+        hideOverlay('pause-menu');
+        showOverlay('settings-menu');
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-quit').addEventListener('click', () => {
+        hideOverlay('pause-menu');
+        showScreen('main-menu');
+        if (audioManager) audioManager.playClick();
+    });
+
+    // Settings
+    $('#btn-close-settings').addEventListener('click', () => {
+        hideOverlay('settings-menu');
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#music-volume').addEventListener('input', (e) => {
+        saveSetting('musicVolume', e.target.value);
+        if (audioManager) audioManager.setMusicVolume(e.target.value / 100);
+    });
+
+    $('#sfx-volume').addEventListener('input', (e) => {
+        saveSetting('sfxVolume', e.target.value);
+        if (audioManager) audioManager.setSFXVolume(e.target.value / 100);
+    });
+
+    $('#anim-speed').addEventListener('change', (e) => {
+        saveSetting('animSpeed', e.target.value);
+    });
+
+    $('#btn-fullscreen').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    // Tutorial
+    $('#btn-close-tutorial').addEventListener('click', () => {
+        hideOverlay('tutorial-overlay');
+        if (audioManager) audioManager.playClick();
+    });
+
+    // Game Over
+    $('#btn-play-again').addEventListener('click', () => {
+        hideOverlay('game-over');
+        showScreen('space-placement');
+        hotseatPhase = 'player1';
+        initSpacePlacement();
+        if (audioManager) audioManager.playClick();
+    });
+
+    $('#btn-menu').addEventListener('click', () => {
+        hideOverlay('game-over');
+        showScreen('main-menu');
+        if (audioManager) audioManager.playClick();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const pauseMenu = $('#pause-menu');
+            const gameScreen = $('#game-screen');
+            if (gameScreen.classList.contains('active') && !pauseMenu.classList.contains('active')) {
+                showOverlay('pause-menu');
+            } else if (pauseMenu.classList.contains('active')) {
+                hideOverlay('pause-menu');
+            }
+        }
+        if (e.key === ' ' || e.key === 'Enter') {
+            if (game && !game.isGameOver && $('#game-screen').classList.contains('active')) {
+                if (game.currentTurn === 'player') {
+                    game.endPlayerTurn();
+                } else if (game.currentTurn === 'enemy') {
+                    game.endEnemyTurn();
+                }
+            }
+        }
+    });
+
+    // Load saved settings
+    const musicVol = loadSetting('musicVolume', '70');
+    const sfxVol = loadSetting('sfxVolume', '80');
+    const animSpeed = loadSetting('animSpeed', '1');
+
+    $('#music-volume').value = musicVol;
+    $('#sfx-volume').value = sfxVol;
+    $('#anim-speed').value = animSpeed;
+}
+
+function startAIGame(difficulty) {
+    game = new Game();
+    game.difficulty = difficulty;
+    game.gameMode = 'vs_ai';
+    showScreen('space-placement');
+    initSpacePlacement();
+    if (audioManager) audioManager.playClick();
+}
+
+function startHotseatGame() {
+    game = new Game();
+    game.gameMode = 'hotseat';
+    hotseatPhase = 'player1';
+    showScreen('space-placement');
+    initSpacePlacement();
+    if (audioManager) audioManager.playClick();
+}
+
+function initSpacePlacement() {
+    const handEl = $('#space-card-hand');
+    const boardEl = $('#placement-board');
+    const startBtn = $('#btn-start-match');
+    const title = $('#space-placement h2');
+    const instruction = $('.placement-instruction');
+
+    handEl.innerHTML = '';
+    boardEl.innerHTML = '';
+    if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.textContent = game.gameMode === 'hotseat' ? 'Continue' : 'Start Match';
+    }
+
+    if (game.gameMode === 'hotseat') {
+        if (title) title.textContent = 'Player 1: Place Your Space Cards';
+        if (instruction) instruction.textContent = 'Click on your territory (rows D-E) to place space cards';
+    } else {
+        if (title) title.textContent = 'Place Your Space Cards';
+        if (instruction) instruction.textContent = 'Click on your territory (rows D-E) to place space cards';
+    }
+
+    // Draw space cards
+    const spaceDeck = buildSpaceDeck();
+    game.playerSpaceCards = spaceDeck.slice(0, 3).map(c => ({ ...c }));
+    game.enemySpaceCards = spaceDeck.slice(3, 6).map(c => ({ ...c }));
+
+    // Auto-place enemy space cards (AI or Player 2 hidden)
+    const enemyTiles = [];
+    for (let r = 0; r <= 1; r++) {
+        for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
+            enemyTiles.push({ row: r, col: c });
+        }
+    }
+    shuffleArray(enemyTiles);
+    game.enemySpaceCards.forEach((card, i) => {
+        if (enemyTiles[i]) {
+            card.placedAt = enemyTiles[i];
+        }
+    });
+
+    renderSpacePlacementUI(game.playerSpaceCards, 'player');
+}
+
+function initSpacePlacementPlayer2() {
+    const handEl = $('#space-card-hand');
+    const boardEl = $('#placement-board');
+    const startBtn = $('#btn-start-match');
+    const title = $('#space-placement h2');
+    const instruction = $('.placement-instruction');
+
+    handEl.innerHTML = '';
+    boardEl.innerHTML = '';
+    startBtn.disabled = true;
+    if (title) title.textContent = 'Player 2: Place Your Space Cards';
+    if (instruction) instruction.textContent = 'Click on your territory (rows A-B) to place space cards';
+
+    renderSpacePlacementUI(game.enemySpaceCards, 'enemy');
+}
+
+function renderSpacePlacementUI(cards, owner) {
+    const handEl = $('#space-card-hand');
+    const boardEl = $('#placement-board');
+    const startBtn = $('#btn-start-match');
+
+    let selectedCardIndex = -1;
+
+    cards.forEach((card, index) => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'space-card-item';
+        cardEl.innerHTML = `
+            <div class="space-card-icon">${card.emoji}</div>
+            <div class="space-card-name">${card.name}</div>
+        `;
+        cardEl.addEventListener('click', () => {
+            $$('.space-card-item').forEach(el => el.classList.remove('selected'));
+            cardEl.classList.add('selected');
+            selectedCardIndex = index;
+        });
+        handEl.appendChild(cardEl);
+    });
+
+    for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
+        for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
+            const tileEl = document.createElement('div');
+            tileEl.className = 'placement-tile';
+
+            if (r <= 1) tileEl.classList.add('enemy-territory');
+            else if (r === 2) tileEl.classList.add('neutral-territory');
+            else tileEl.classList.add('player-territory');
+
+            tileEl.dataset.row = r;
+            tileEl.dataset.col = c;
+
+            // Show already placed cards from both players in hotseat
+            const existingPlayer = game.playerSpaceCards.find(pc => pc.placedAt && pc.placedAt.row === r && pc.placedAt.col === c);
+            const existingEnemy = game.enemySpaceCards.find(ec => ec.placedAt && ec.placedAt.row === r && ec.placedAt.col === c);
+
+            if (existingPlayer && owner === 'player') {
+                tileEl.textContent = existingPlayer.emoji;
+                tileEl.classList.add('occupied');
+            } else if (existingEnemy && owner === 'enemy') {
+                tileEl.textContent = existingEnemy.emoji;
+                tileEl.classList.add('occupied');
+            }
+
+            tileEl.addEventListener('click', () => {
+                if (selectedCardIndex === -1) return;
+
+                const isPlayer1 = owner === 'player';
+                if (isPlayer1 && r < 3) return;
+                if (!isPlayer1 && r > 1) return;
+
+                // Check if already occupied
+                const existing = cards.find(pc => pc.placedAt && pc.placedAt.row === r && pc.placedAt.col === c);
+                if (existing) return;
+
+                cards[selectedCardIndex].placedAt = { row: r, col: c };
+
+                // Update tile visually
+                tileEl.textContent = cards[selectedCardIndex].emoji;
+                tileEl.classList.add('occupied');
+
+                const allPlaced = cards.every(c => c.placedAt);
+                if (startBtn) startBtn.disabled = !allPlaced;
+            });
+
+            boardEl.appendChild(tileEl);
+        }
+    }
+}
