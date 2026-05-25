@@ -50,7 +50,7 @@ const CONSTANTS = {
     KING_DEATH_PENALTY: 100,
 
     // Pope conversion
-    POPE_CONVERT_CHANCE: 0.30,
+    POPE_CONVERT_CHANCE: 0.99,
     POPE_COOLDOWN: 2,
 
     // Space cards

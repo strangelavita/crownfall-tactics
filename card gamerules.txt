@@ -290,6 +290,8 @@ Allied troops in own territory gain:
 If standing in ENEMY territory:
 Allied troops in enemy territory gain:
 +20 attack and +15 max health
+Allied troops in own territory gain:
++15 max health
 
 Penalty:
 If King dies:
