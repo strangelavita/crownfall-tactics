@@ -460,7 +460,8 @@ class Game {
  // ── ARCHITECT ABILITY (check BEFORE move) ──
  if (unit.id === 'architect' && dist <= 1 && !this.unitsActed.has(unit.instanceId)) {
  const targetTile = this.board[row][col];
- if (targetTile.spaceCard && targetTile.spaceCard.owner !== currentOwner && this.isSpaceCardVisibleTo(targetTile.spaceCard, currentOwner)) {
+ // Architect can always see adjacent enemy space cards (bypass visibility fog)
+ if (targetTile.spaceCard && targetTile.spaceCard.owner !== currentOwner) {
  if (currentAP < 1) {
  logAction(`❌ Not enough AP for Architect ability! Need 1, have ${currentAP}`, 'system');
  this.selectedUnit = null;
@@ -862,7 +863,7 @@ class Game {
  async useArchitectAbility(architect, targetRow, targetCol) {
  const tile = this.board[targetRow][targetCol];
  if (!tile.spaceCard || tile.spaceCard.owner === architect.owner) return;
- if (!this.isSpaceCardVisibleTo(tile.spaceCard, architect.owner)) return;
+ // Architect bypasses fog of war — can always target adjacent enemy space cards
 
  const sc = tile.spaceCard;
  if (sc.type === 'one-time' && !sc.used) {
@@ -1181,7 +1182,7 @@ class Game {
  if (!tile.unit && dist <= unit.moveRange && !hasMoved && !unit.volcanoEffect) {
  // Don't show move highlight if Architect is targeting an adjacent enemy space card
  const isArchitectTargetingSC = unit.id === 'architect' && dist <= 1 && tile.spaceCard
- && tile.spaceCard.owner !== currentOwner && this.isSpaceCardVisibleTo(tile.spaceCard, currentOwner);
+ && tile.spaceCard.owner !== currentOwner;
  if (!isArchitectTargetingSC) {
  tileEl.classList.add('highlight-move');
  }
@@ -1200,7 +1201,8 @@ class Game {
 
  // Architect ability highlight: adjacent enemy space cards (with or without units)
  if (unit.id === 'architect' && dist <= 1 && !this.unitsActed.has(unit.instanceId)) {
- if (tile.spaceCard && tile.spaceCard.owner !== currentOwner && this.isSpaceCardVisibleTo(tile.spaceCard, currentOwner)) {
+ // Architect can always see adjacent enemy space cards
+ if (tile.spaceCard && tile.spaceCard.owner !== currentOwner) {
  tileEl.classList.add('highlight-ability');
  }
  }
