@@ -40,7 +40,7 @@ class AI {
 
             // Consider attacks first (high priority)
             for (const action of scoredAttacks) {
-                if (action.unit.apCost <= ap && !actedUnits.has(action.unit.instanceId)) {
+                if (1 <= ap && !actedUnits.has(action.unit.instanceId)) {
                     if (action.score > bestScore) {
                         bestScore = action.score;
                         bestAction = action;
@@ -50,7 +50,8 @@ class AI {
 
             // Consider abilities
             for (const action of scoredAbilities) {
-                if (action.unit.apCost <= ap && !actedUnits.has(action.unit.instanceId)) {
+                const abilityCost = action.apCost || 1;
+                if (abilityCost <= ap && !actedUnits.has(action.unit.instanceId)) {
                     if (action.score > bestScore) {
                         bestScore = action.score;
                         bestAction = action;
@@ -70,7 +71,7 @@ class AI {
 
             // Consider moves
             for (const action of scoredMoves) {
-                if (!actedUnits.has(action.unit.instanceId) && !actedUnits.has(`${action.unit.instanceId}_attacked`)) {
+                if (1 <= ap && !actedUnits.has(action.unit.instanceId) && !actedUnits.has(`${action.unit.instanceId}_attacked`)) {
                     if (action.score > bestScore) {
                         bestScore = action.score;
                         bestAction = action;
