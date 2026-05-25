@@ -1,343 +1,282 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crownfall Tactics</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crownfall Tactics - 2 Player Strategy Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+<base target="_blank">
 </head>
 <body>
-    <div id="game-container">
-        <!-- Loading Screen -->
-        <div id="loading-screen" class="screen active">
-            <div class="loading-content">
-                <div class="pixel-logo">CROWNFALL</div>
-                <div class="pixel-subtitle">TACTICS</div>
-                <div class="loading-bar-container">
-                    <div class="loading-bar"></div>
-                </div>
-                <div class="loading-text">Loading Assets...</div>
-            </div>
+  <div id="game-container">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="screen active">
+      <div class="loading-content">
+        <div class="pixel-logo">CROWNFALL</div>
+        <div class="pixel-subtitle">TACTICS</div>
+        <div class="loading-bar-container">
+          <div class="loading-bar"></div>
         </div>
-
-        <!-- Main Menu -->
-        <div id="main-menu" class="screen">
-            <div class="menu-bg"></div>
-            <div class="menu-content">
-                <h1 class="game-title">
-                    <span class="title-crown">👑</span>
-                    CROWNFALL
-                    <span class="title-crown">👑</span>
-                </h1>
-                <h2 class="game-subtitle">TACTICS</h2>
-                <div class="menu-buttons">
-                    <button id="btn-vs-ai" class="menu-btn primary">
-                        <span class="btn-icon">⚔️</span>
-                        VS AI
-                    </button>
-                    <button id="btn-quick-match" class="menu-btn">
-                        <span class="btn-icon">Q</span>
-                        Quick Match
-                    </button>
-                    <button id="btn-hotseat" class="menu-btn">
-                        <span class="btn-icon">🎮</span>
-                        Hotseat Multiplayer
-                    </button>
-                    <button id="btn-tutorial" class="menu-btn">
-                        <span class="btn-icon">📖</span>
-                        Tutorial
-                    </button>
-                    <button id="btn-settings" class="menu-btn">
-                        <span class="btn-icon">⚙️</span>
-                        Settings
-                    </button>
-                </div>
-                <div class="menu-footer">
-                    <p>Turn-Based Tactical Card Strategy</p>
-                    <p class="version">v1.0</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Difficulty Select -->
-        <div id="difficulty-select" class="screen">
-            <div class="screen-bg"></div>
-            <div class="screen-content">
-                <h2 id="difficulty-title">Select Difficulty</h2>
-                <div class="difficulty-buttons">
-                    <button id="btn-easy" class="difficulty-btn">
-                        <span class="diff-icon">🌱</span>
-                        <span class="diff-name">Easy</span>
-                        <span class="diff-desc">Relaxed AI opponent</span>
-                    </button>
-                    <button id="btn-normal" class="difficulty-btn">
-                        <span class="diff-icon">⚔️</span>
-                        <span class="diff-name">Normal</span>
-                        <span class="diff-desc">Balanced challenge</span>
-                    </button>
-                    <button id="btn-hard" class="difficulty-btn">
-                        <span class="diff-icon">🔥</span>
-                        <span class="diff-name">Hard</span>
-                        <span class="diff-desc">Ruthless AI opponent</span>
-                    </button>
-                </div>
-                <button id="btn-back-diff" class="back-btn">← Back</button>
-            </div>
-        </div>
-
-        <!-- Space Card Placement -->
-        <div id="space-placement" class="screen">
-            <div class="screen-content">
-                <h2>Place Your Space Cards</h2>
-                <p class="placement-instruction">Click on your territory (rows D-E) to place space cards</p>
-                <div id="space-card-hand" class="space-hand"></div>
-                <div id="placement-board" class="placement-board"></div>
-                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
-                    <button id="btn-randomize-placement" class="primary-btn">Randomize</button>
-                    <button id="btn-start-match" class="primary-btn" disabled>Start Match</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Game Screen -->
-        <div id="game-screen" class="screen">
-            <!-- Top Bar -->
-            <div id="top-bar">
-                <div class="top-section left">
-                    <div class="round-info">
-                        <span class="round-label">ROUND</span>
-                        <span id="round-number" class="round-number">1</span>
-                        <span id="round-total" class="round-total">/ 10</span>
-                    </div>
-                </div>
-                <div class="top-section center">
-                    <div id="turn-indicator" class="turn-indicator">
-                        <span class="turn-label">Player Turn</span>
-                    </div>
-                    <div id="ap-display" class="ap-display">
-                        <span class="ap-label">AP</span>
-                        <span id="ap-value" class="ap-value">3</span>
-                        <span class="ap-total">/ 3</span>
-                    </div>
-                </div>
-                <div class="top-section right">
-                    <div class="score-display">
-                        <div class="score-player">
-                            <span class="score-label" id="player-label">You</span>
-                            <span id="player-score" class="score-value">0</span>
-                        </div>
-                        <div class="score-divider">-</div>
-                        <div class="score-enemy">
-                            <span id="enemy-score" class="score-value">0</span>
-                            <span class="score-label" id="enemy-label">Enemy</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Game Area -->
-            <div id="game-area">
-                <!-- Left Panel: Player Hand -->
-                <div id="left-panel" class="side-panel">
-                    <div class="panel-header">
-                        <span class="panel-title">Your Hand</span>
-                        <span class="hand-deck-counts">
-                            <span id="hand-count" class="deck-count">Hand 0</span>
-                            <span id="deck-count" class="deck-count">Deck 0</span>
-                        </span>
-                    </div>
-                    <div id="player-hand" class="card-hand"></div>
-                </div>
-
-                <!-- Center: Battle Board -->
-                <div id="board-container">
-                    <div id="territory-labels">
-                        <div class="territory-label enemy-core">ENEMY CORE</div>
-                        <div class="territory-label enemy-front">ENEMY FRONT</div>
-                        <div class="territory-label neutral">NEUTRAL</div>
-                        <div class="territory-label player-front">YOUR FRONT</div>
-                        <div class="territory-label player-core">YOUR CORE</div>
-                    </div>
-                    <div id="game-board"></div>
-                </div>
-
-                <!-- Right Panel: Info -->
-                <div id="right-panel" class="side-panel">
-                    <div id="unit-info" class="info-panel">
-                        <div class="panel-header">
-                            <span class="panel-title">Unit Info</span>
-                        </div>
-                        <div id="unit-details" class="info-content">
-                            <p class="info-placeholder">Hover over a unit to see details</p>
-                        </div>
-                    </div>
-                    <div id="tile-info" class="info-panel">
-                        <div class="panel-header">
-                            <span class="panel-title">Tile Info</span>
-                        </div>
-                        <div id="tile-details" class="info-content">
-                            <p class="info-placeholder">Hover over a tile</p>
-                        </div>
-                    </div>
-                    <div id="combat-forecast" class="info-panel">
-                        <div class="panel-header">
-                            <span class="panel-title">Combat Forecast</span>
-                        </div>
-                        <div id="forecast-details" class="info-content">
-                            <p class="info-placeholder">Select an attack target</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bottom Bar -->
-            <div id="bottom-bar">
-                <div id="action-log" class="action-log">
-                    <div class="log-header">Battle Log</div>
-                    <div id="log-content" class="log-content"></div>
-                </div>
-                <div id="action-buttons">
-                    <div id="space-action-panel" class="space-action-panel hidden">
-                        <div id="space-action-title" class="space-action-title">Space Card</div>
-                        <div id="space-action-desc" class="space-action-desc"></div>
-                        <button id="btn-activate-space" class="action-btn space-activate">Activate Space Card (1 AP)</button>
-                        <button id="btn-select-unit-from-space" class="action-btn secondary hidden">Select Unit</button>
-                    </div>
-                    <button id="btn-end-turn" class="action-btn primary">End Turn</button>
-                    <button id="btn-pause" class="action-btn">⏸</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pause Menu -->
-        <div id="pause-menu" class="overlay">
-            <div class="overlay-content">
-                <h2>Paused</h2>
-                <button id="btn-resume" class="overlay-btn">Resume</button>
-                <button id="btn-restart" class="overlay-btn">Restart Match</button>
-                <button id="btn-settings-pause" class="overlay-btn">Settings</button>
-                <button id="btn-quit" class="overlay-btn danger">Quit to Menu</button>
-            </div>
-        </div>
-
-        <!-- Settings Menu -->
-        <div id="settings-menu" class="overlay">
-            <div class="overlay-content">
-                <h2>Settings</h2>
-                <div class="setting-row">
-                    <label>Music Volume</label>
-                    <input type="range" id="music-volume" min="0" max="100" value="70">
-                </div>
-                <div class="setting-row">
-                    <label>SFX Volume</label>
-                    <input type="range" id="sfx-volume" min="0" max="100" value="80">
-                </div>
-                <div class="setting-row">
-                    <label>Animation Speed</label>
-                    <select id="anim-speed">
-                        <option value="0.5">Fast</option>
-                        <option value="1" selected>Normal</option>
-                        <option value="1.5">Slow</option>
-                    </select>
-                </div>
-                <div class="setting-row">
-                    <label>Fullscreen</label>
-                    <button id="btn-fullscreen" class="toggle-btn">Toggle</button>
-                </div>
-                <button id="btn-close-settings" class="overlay-btn">Close</button>
-            </div>
-        </div>
-
-        <!-- Tutorial Overlay -->
-        <div id="tutorial-overlay" class="overlay">
-            <div class="overlay-content wide">
-                <h2>Game Rules</h2>
-                <div class="tutorial-content">
-                    <div class="tutorial-section">
-                        <h3>Objective</h3>
-                        <p>Play 10 rounds on a 5x4 board. Control territory with surviving troops to score points at the end of each round. Highest score wins, unless a King is slain first.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>Round Flow</h3>
-                        <p>Each round starts with both players drawing 1 troop card. Player 1 takes a turn with 3 AP, then Player 2 or the AI takes a turn with 3 AP. AP resets every turn and unused AP is lost.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>Deck and Hand</h3>
-                        <p>Each player has a 15-card troop deck and starts with 5 cards in hand. The first draw phase brings the opening turn hand to 6 cards. Deployed troop cards leave your hand.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>AP Costs</h3>
-                        <p>Deploying a troop costs that card's AP. Moving costs 1 AP, attacking costs 1 AP, Architect space-card disruption costs 1 AP, and activating any space card costs 1 AP.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>Territory Scoring</h3>
-                        <p>Rows A-B are the top player's territory, row C is neutral, and rows D-E are the bottom player's territory. Own territory scores 5, neutral scores 10, enemy territory scores 20. Rounds 8-10 score double.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>Movement and Attacks</h3>
-                        <p>Movement is orthogonal, one troop per tile. Most troops act once per turn. Swordsmen are short-range fighters. Knights can move up to 2 and may move then attack. Archers attack in straight lines through intervening units; Pikemen attack in straight lines only if the path is clear.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>Special Troops</h3>
-                        <p>The Pope can attempt a 30% conversion on an adjacent non-King, non-Knight troop; converted units are stunned and the Pope has a 2-round cooldown. The Architect can disrupt adjacent visible enemy space cards, disabling permanent cards or destroying unactivated one-time cards.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>The King</h3>
-                        <p>Protect your King. If your King dies, you lose immediately. A King in own territory gives allied troops in own territory +15 max health. A King pushed into enemy territory empowers allied troops there with +20 attack and +15 max health.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>Space Cards</h3>
-                        <p>Before the match, each player places 6 space cards in their own territory. Opponent space cards stay hidden until activated or used. Click one of your space-card tiles during your turn to reveal the bottom activation option.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>Space Effects</h3>
-                        <p>Castle gives a troop on its tile +40 max health. Tower fires 5 damage at adjacent enemies at the start of its owner's turns. Volcano stops a troop from moving this turn and makes it take 50% more damage. Shield blocks the next incoming damage. Rage Potion doubles the next attack. Health Potion restores a troop to full health.</p>
-                    </div>
-                    <div class="tutorial-section">
-                        <h3>Game Modes</h3>
-                        <p>VS AI plays against Easy, Normal, or Hard AI. Quick Match uses the same rules in a 5-round match with round 5 scoring double. Hotseat lets two local players alternate turns on the same device, with each player only seeing their own hidden space cards until cards are activated.</p>
-                    </div>
-                </div>
-                <button id="btn-close-tutorial" class="overlay-btn">Got it!</button>
-            </div>
-        </div>
-
-        <!-- Game Over Screen -->
-        <div id="game-over" class="overlay">
-            <div class="overlay-content">
-                <h2 id="game-result">Victory!</h2>
-                <div id="final-scores" class="final-scores">
-                    <div class="final-score">
-                        <span class="final-label">Player</span>
-                        <span id="final-player-score" class="final-value">0</span>
-                    </div>
-                    <div class="final-vs">VS</div>
-                    <div class="final-score">
-                        <span class="final-label">Enemy</span>
-                        <span id="final-enemy-score" class="final-value">0</span>
-                    </div>
-                </div>
-                <div id="tiebreaker-info" class="tiebreaker-info"></div>
-                <button id="btn-play-again" class="overlay-btn primary">Play Again</button>
-                <button id="btn-menu" class="overlay-btn">Main Menu</button>
-            </div>
-        </div>
-
-        <!-- Floating Damage Container -->
-        <div id="floating-container"></div>
+        <div class="loading-text">Loading Assets...</div>
+      </div>
     </div>
 
-    <script src="js/audio.js"></script>
-    <script src="js/constants.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/cards.js"></script>
-    <script src="js/units.js"></script>
-    <script src="js/board.js"></script>
-    <script src="js/combat.js"></script>
-    <script src="js/ai.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/game.js"></script>
-    <script src="js/main.js"></script>
+    <!-- Main Menu -->
+    <div id="main-menu" class="screen">
+      <div class="menu-bg"></div>
+      <div class="menu-content">
+        <div class="game-title"><span class="title-crown">👑</span> CROWNFALL</div>
+        <div class="game-subtitle">TACTICS</div>
+        <div class="menu-buttons">
+          <button id="btn-vs-ai" class="menu-btn primary"><span class="btn-icon">⚔️</span> Standard Match (10 Rounds)</button>
+          <button id="btn-quick-match" class="menu-btn"><span class="btn-icon">⚡</span> Quick Match (5 Rounds)</button>
+          <button id="btn-hotseat" class="menu-btn"><span class="btn-icon">🎮</span> 2 Player Hotseat</button>
+          <button id="btn-tutorial" class="menu-btn"><span class="btn-icon">📖</span> How to Play</button>
+          <button id="btn-settings" class="menu-btn"><span class="btn-icon">⚙️</span> Settings</button>
+        </div>
+        <div class="menu-footer">
+          <div>2-Player Strategy Game</div>
+          <div class="version">v1.0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Difficulty Select -->
+    <div id="difficulty-select" class="screen">
+      <div class="screen-content">
+        <h2 id="difficulty-title">Select Match Type</h2>
+        <div class="difficulty-buttons">
+          <button id="btn-easy" class="difficulty-btn">
+            <span class="diff-icon">⚔️</span>
+            <span class="diff-name">Standard</span>
+            <span class="diff-desc">10 rounds, full strategy</span>
+          </button>
+          <button id="btn-normal" class="difficulty-btn">
+            <span class="diff-icon">⚡</span>
+            <span class="diff-name">Quick</span>
+            <span class="diff-desc">5 rounds, fast paced</span>
+          </button>
+        </div>
+        <button id="btn-back-diff" class="back-btn">← Back to Menu</button>
+      </div>
+    </div>
+
+    <!-- Space Placement -->
+    <div id="space-placement" class="screen">
+      <div class="screen-content">
+        <h2>Place Your Space Cards</h2>
+        <p class="placement-instruction">Click on your territory to place space cards</p>
+        <div id="space-card-hand" class="space-hand"></div>
+        <div id="placement-board" class="placement-board"></div>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+          <button id="btn-randomize-placement" class="menu-btn">🎲 Randomize</button>
+          <button id="btn-start-match" class="primary-btn" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+      <!-- Top Bar -->
+      <div id="top-bar">
+        <div class="top-section">
+          <div class="round-info">
+            <span class="round-label">ROUND</span>
+            <span id="round-number" class="round-number">1</span>
+            <span id="round-total" class="round-total">/ 10</span>
+          </div>
+          <div id="turn-indicator" class="turn-indicator player-turn">
+            <span class="turn-label">Player 1 Turn</span>
+          </div>
+        </div>
+        <div class="top-section">
+          <div class="ap-display">
+            <span class="ap-label">AP</span>
+            <span id="ap-value" class="ap-value">3</span>
+            <span class="ap-total">/ 3</span>
+          </div>
+        </div>
+        <div class="top-section">
+          <div class="score-display">
+            <div class="score-player">
+              <span id="player-label" class="score-label">P1</span>
+              <span id="player-score" class="score-value">0</span>
+            </div>
+            <span class="score-divider">-</span>
+            <div class="score-enemy">
+              <span id="enemy-label" class="score-label">P2</span>
+              <span id="enemy-score" class="score-value">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Area -->
+      <div id="game-area">
+        <!-- Left Panel -->
+        <div id="left-panel" class="side-panel">
+          <div class="panel-header">
+            <span class="panel-title">Player 1 Hand</span>
+            <div class="hand-deck-counts">
+              <span id="hand-count" class="deck-count">Hand 5</span>
+              <span id="deck-count" class="deck-count">Deck 10</span>
+            </div>
+          </div>
+          <div id="player-hand" class="card-hand"></div>
+        </div>
+
+        <!-- Board Container -->
+        <div id="board-container">
+          <div id="territory-labels">
+            <div class="territory-label enemy-core">Player 2<br>Core</div>
+            <div class="territory-label enemy-front">Player 2<br>Front</div>
+            <div class="territory-label neutral">Neutral</div>
+            <div class="territory-label player-front">Player 1<br>Front</div>
+            <div class="territory-label player-core">Player 1<br>Core</div>
+          </div>
+          <div id="game-board"></div>
+        </div>
+
+        <!-- Right Panel -->
+        <div id="right-panel" class="side-panel">
+          <div id="tile-details" class="info-panel">
+            <div class="panel-header">
+              <span class="panel-title">Tile Info</span>
+            </div>
+            <div class="info-content">
+              <p class="info-placeholder">Hover over a tile to see details</p>
+            </div>
+          </div>
+          <div id="unit-details" class="info-panel">
+            <div class="panel-header">
+              <span class="panel-title">Unit Info</span>
+            </div>
+            <div class="info-content">
+              <p class="info-placeholder">Hover over a unit to see details</p>
+            </div>
+          </div>
+          <div id="space-action-panel" class="space-action-panel hidden">
+            <div id="space-action-title" class="space-action-title">Space Card</div>
+            <div id="space-action-desc" class="space-action-desc">Description</div>
+            <button id="btn-activate-space" class="action-btn space-activate">Activate Space Card (1 AP)</button>
+            <button id="btn-select-unit-from-space" class="action-btn secondary hidden">Select Unit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div id="bottom-bar">
+        <div class="action-log">
+          <div class="log-header">Battle Log</div>
+          <div id="log-content" class="log-content"></div>
+        </div>
+        <div id="action-buttons">
+          <button id="btn-end-turn" class="action-btn primary">End Turn (Space)</button>
+          <button id="btn-pause" class="action-btn secondary">⏸️ Pause</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Damage Container -->
+    <div id="floating-container"></div>
+
+    <!-- Pause Menu Overlay -->
+    <div id="pause-menu" class="overlay">
+      <div class="overlay-content">
+        <h2>Paused</h2>
+        <button id="btn-resume" class="overlay-btn primary">Resume</button>
+        <button id="btn-restart" class="overlay-btn">Restart Match</button>
+        <button id="btn-settings-pause" class="overlay-btn">Settings</button>
+        <button id="btn-quit" class="overlay-btn danger">Quit to Menu</button>
+      </div>
+    </div>
+
+    <!-- Settings Overlay -->
+    <div id="settings-menu" class="overlay">
+      <div class="overlay-content">
+        <h2>Settings</h2>
+        <div class="setting-row">
+          <label>Music Volume</label>
+          <input type="range" id="music-volume" min="0" max="100" value="70">
+        </div>
+        <div class="setting-row">
+          <label>SFX Volume</label>
+          <input type="range" id="sfx-volume" min="0" max="100" value="80">
+        </div>
+        <div class="setting-row">
+          <label>Animation Speed</label>
+          <select id="anim-speed">
+            <option value="0.5">Fast</option>
+            <option value="1" selected>Normal</option>
+            <option value="1.5">Slow</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>Fullscreen</label>
+          <button id="btn-fullscreen" class="toggle-btn">Toggle</button>
+        </div>
+        <button id="btn-close-settings" class="overlay-btn primary" style="margin-top: 20px;">Close</button>
+      </div>
+    </div>
+
+    <!-- Tutorial Overlay -->
+    <div id="tutorial-overlay" class="overlay">
+      <div class="overlay-content wide">
+        <h2>How to Play</h2>
+        <div class="tutorial-content">
+          <div class="tutorial-section">
+            <h3>🎯 Objective</h3>
+            <p>Play 10 rounds on a 5x4 board. Control territory with surviving troops to score points at the end of each round. Highest score wins, unless a King is slain first.</p>
+          </div>
+          <div class="tutorial-section">
+            <h3>⚔️ Combat</h3>
+            <p>Deploy troops, move them, and attack enemies. Each action costs AP (Action Points). Player 1 takes a turn with 3 AP, then Player 2 takes a turn with 3 AP.</p>
+          </div>
+          <div class="tutorial-section">
+            <h3>🏰 Territories</h3>
+            <p>Rows A-B are Player 2's territory, row C is neutral, and rows D-E are Player 1's territory. Own territory scores 5, neutral scores 10, enemy territory scores 20. Rounds 8-10 score double.</p>
+          </div>
+          <div class="tutorial-section">
+            <h3>👑 The King</h3>
+            <p>Protect your King! If he dies, you lose immediately. A King in own territory gives allied troops in own territory +15 max health. A King pushed into enemy territory empowers allied troops there with +20 attack and +15 max health.</p>
+          </div>
+          <div class="tutorial-section">
+            <h3>🃏 Space Cards</h3>
+            <p>Before the match, each player places 6 space cards in their own territory. Opponent space cards stay hidden until activated or used. Click one of your space-card tiles during your turn to reveal the activation option.</p>
+          </div>
+        </div>
+        <button id="btn-close-tutorial" class="overlay-btn primary">Got it!</button>
+      </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="game-over" class="overlay">
+      <div class="overlay-content">
+        <div id="game-result" class="victory">Player 1 Wins!</div>
+        <div class="final-scores">
+          <div class="final-score">
+            <span class="final-label">Player 1</span>
+            <span id="final-player-score" class="final-value">0</span>
+          </div>
+          <span class="final-vs">VS</span>
+          <div class="final-score">
+            <span class="final-label">Player 2</span>
+            <span id="final-enemy-score" class="final-value">0</span>
+          </div>
+        </div>
+        <div id="tiebreaker-info" class="tiebreaker-info"></div>
+        <button id="btn-play-again" class="overlay-btn primary">Play Again</button>
+        <button id="btn-menu" class="overlay-btn">Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/constants.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
