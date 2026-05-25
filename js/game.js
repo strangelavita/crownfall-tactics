@@ -1,4 +1,4 @@
-// ===== CROWNFALL TACTICS - MAIN GAME ENGINE (FIXED) =====
+// ===== CROWNFALL TACTICS - MAIN GAME ENGINE =====
 
 class Game {
  constructor() {
@@ -457,7 +457,7 @@ class Game {
  return;
  }
 
- // ── ARCHITECT ABILITY (check first, before move) ──
+ // ── ARCHITECT ABILITY (check BEFORE move) ──
  if (unit.id === 'architect' && dist <= 1 && !this.unitsActed.has(unit.instanceId)) {
  const targetTile = this.board[row][col];
  if (targetTile.spaceCard && targetTile.spaceCard.owner !== currentOwner && this.isSpaceCardVisibleTo(targetTile.spaceCard, currentOwner)) {
@@ -770,19 +770,20 @@ class Game {
  hasMoved: false, hasAttacked: false,
  summonedThisTurn: true, buffs: []
  };
- // Initialize base stats for King buff system
+ // Store base stats for proper buff tracking
  unit.baseMaxHealth = card.maxHealth || card.health;
  unit.baseAttack = card.attack || 0;
+ unit.kingHealthBonus = 0;
  unit.kingAttackBonus = 0;
 
  const tile = this.board[row][col];
  if (tile.spaceCard && tile.spaceCard.id === 'castle' && tile.spaceCard.activated && !tile.spaceCard.disabled) {
- unit.maxHealth = (unit.maxHealth || unit.health) + 40;
+ unit.baseMaxHealth += 40;
+ unit.maxHealth = unit.baseMaxHealth;
  unit.health = unit.maxHealth;
  unit.currentHealth = unit.maxHealth;
- unit.baseMaxHealth += 40; // Castle buff is permanent, add to base
  }
- this.recalculateKingBuffs();
+ this.applyKingBuffs();
  this.board[row][col].unit = unit;
  this.units.push(unit);
  logAction(`${owner === 'player' ? 'Player' : 'Enemy'} deployed ${card.name} at ${CONSTANTS.COORDS[row][col]}`, owner);
@@ -801,7 +802,7 @@ class Game {
  unit.hasMoved = true;
 
  logAction(`${unit.owner === 'player' ? 'Player' : 'Enemy'} moved ${unit.name} to ${CONSTANTS.COORDS[toRow][toCol]}`, unit.owner);
- this.recalculateKingBuffs();
+ this.applyKingBuffs();
  this.renderBoard();
  await delay(200);
  }
@@ -813,8 +814,8 @@ class Game {
  let damage = attacker.attack || 0;
  const modifiers = [];
 
- // Apply King's temporary attack buff
- if (attacker.kingAttackBonus && attacker.kingAttackBonus > 0) {
+ // Apply temporary King attack buff
+ if (attacker.kingAttackBonus > 0) {
  damage += attacker.kingAttackBonus;
  modifiers.push(`+${attacker.kingAttackBonus} King`);
  }
@@ -911,6 +912,7 @@ class Game {
  }
  tile.unit = null;
  this.units = this.units.filter(u => u.instanceId !== unit.instanceId);
+ this.applyKingBuffs(); // Recalculate buffs after king death
  this.renderBoard();
  this.updateUI();
  await delay(500);
@@ -920,7 +922,7 @@ class Game {
 
  tile.unit = null;
  this.units = this.units.filter(u => u.instanceId !== unit.instanceId);
- this.recalculateKingBuffs(); // Recalculate buffs after unit death
+ this.applyKingBuffs(); // Recalculate buffs after unit death
  this.renderBoard();
  await delay(200);
  }
@@ -948,16 +950,23 @@ class Game {
  return null;
  }
 
- // ===== FIXED: King Buff System =====
- recalculateKingBuffs() {
+ // ===== FIXED King Buff System =====
+ // Buffs are recalculated each time based on current positions.
+ // Units lose buffs when they or the King leave the buffed territory.
+ applyKingBuffs() {
+ const playerKing = this.findKing('player');
+ const enemyKing = this.findKing('enemy');
+
  // Step 1: Reset all non-king units to base stats
  for (const unit of this.units) {
  if (unit.id === 'king') continue;
- // Reset maxHealth to base (preserving current health ratio)
- const oldMax = unit.maxHealth || unit.baseMaxHealth;
+ // Revert maxHealth to base (removing any previous King health buff)
+ const oldMax = unit.maxHealth;
  unit.maxHealth = unit.baseMaxHealth;
- // Clamp currentHealth to new max (don't heal, just cap)
- unit.currentHealth = Math.min(unit.currentHealth, unit.maxHealth);
+ // Cap currentHealth to new max (don't heal, just remove excess buffer)
+ if (unit.currentHealth > unit.maxHealth) {
+ unit.currentHealth = unit.maxHealth;
+ }
  unit.health = unit.maxHealth;
  // Clear attack buff
  unit.kingAttackBonus = 0;
@@ -965,11 +974,10 @@ class Game {
  unit.buffs = [];
  }
 
- // Step 2: Apply player king buffs
- const playerKing = this.findKing('player');
+ // Step 2: Apply Player King buffs
  if (playerKing) {
  const kingTerritory = getTerritory(playerKing.row);
- const kingInEnemyTerritory = kingTerritory === 'enemy_core' || kingTerritory === 'enemy_front';
+ const kingInEnemyTerritory = (kingTerritory === 'enemy_core' || kingTerritory === 'enemy_front');
 
  for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
  for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
@@ -977,30 +985,30 @@ class Game {
  if (!unit || unit.owner !== 'player' || unit.id === 'king') continue;
 
  const unitTerritory = getTerritory(r);
- const unitInOwnTerritory = unitTerritory === 'player_front' || unitTerritory === 'player_core';
- const unitInEnemyTerritory = unitTerritory === 'enemy_core' || unitTerritory === 'enemy_front';
+ const inOwnTerritory = (unitTerritory === 'player_core' || unitTerritory === 'player_front');
+ const inEnemyTerritory = (unitTerritory === 'enemy_core' || unitTerritory === 'enemy_front');
 
  let healthBonus = 0;
  let attackBonus = 0;
 
- // All allied troops in own territory get +15 max health
- if (unitInOwnTerritory) {
+ // Rule: Allied troops in own territory gain +15 max health
+ if (inOwnTerritory) {
  healthBonus += 15;
- unit.buffs.push('King +15 HP');
+ unit.buffs.push('+15 HP (own terr)');
  }
 
- // If King is in enemy territory, allied troops in enemy territory get extra buffs
- if (kingInEnemyTerritory && unitInEnemyTerritory) {
+ // Rule: If King in enemy territory, allied troops in enemy territory gain +20 attack and +15 max health
+ if (kingInEnemyTerritory && inEnemyTerritory) {
  healthBonus += 15;
  attackBonus += 20;
- unit.buffs.push('King +15 HP');
- unit.buffs.push('King +20 ATK');
+ unit.buffs.push('+15 HP (king in enemy)');
+ unit.buffs.push('+20 ATK (king in enemy)');
  }
 
- // Apply health buff
+ // Apply health buff (no free healing — just increases max capacity)
  if (healthBonus > 0) {
  unit.maxHealth = unit.baseMaxHealth + healthBonus;
- // currentHealth stays the same (capped to new max), no free healing
+ // Keep currentHealth the same, just capped to new max
  unit.currentHealth = Math.min(unit.currentHealth, unit.maxHealth);
  unit.health = unit.maxHealth;
  }
@@ -1011,11 +1019,10 @@ class Game {
  }
  }
 
- // Step 3: Apply enemy king buffs
- const enemyKing = this.findKing('enemy');
+ // Step 3: Apply Enemy King buffs
  if (enemyKing) {
  const kingTerritory = getTerritory(enemyKing.row);
- const kingInEnemyTerritory = kingTerritory === 'player_core' || kingTerritory === 'player_front';
+ const kingInEnemyTerritory = (kingTerritory === 'player_core' || kingTerritory === 'player_front');
 
  for (let r = 0; r < CONSTANTS.BOARD_ROWS; r++) {
  for (let c = 0; c < CONSTANTS.BOARD_COLS; c++) {
@@ -1023,24 +1030,24 @@ class Game {
  if (!unit || unit.owner !== 'enemy' || unit.id === 'king') continue;
 
  const unitTerritory = getTerritory(r);
- const unitInOwnTerritory = unitTerritory === 'enemy_front' || unitTerritory === 'enemy_core';
- const unitInEnemyTerritory = unitTerritory === 'player_core' || unitTerritory === 'player_front';
+ const inOwnTerritory = (unitTerritory === 'enemy_core' || unitTerritory === 'enemy_front');
+ const inEnemyTerritory = (unitTerritory === 'player_core' || unitTerritory === 'player_front');
 
  let healthBonus = 0;
  let attackBonus = 0;
 
- // All allied troops in own territory get +15 max health
- if (unitInOwnTerritory) {
+ // Rule: Allied troops in own territory gain +15 max health
+ if (inOwnTerritory) {
  healthBonus += 15;
- unit.buffs.push('King +15 HP');
+ unit.buffs.push('+15 HP (own terr)');
  }
 
- // If King is in enemy territory, allied troops in enemy territory get extra buffs
- if (kingInEnemyTerritory && unitInEnemyTerritory) {
+ // Rule: If King in enemy territory, allied troops in enemy territory gain +20 attack and +15 max health
+ if (kingInEnemyTerritory && inEnemyTerritory) {
  healthBonus += 15;
  attackBonus += 20;
- unit.buffs.push('King +15 HP');
- unit.buffs.push('King +20 ATK');
+ unit.buffs.push('+15 HP (king in enemy)');
+ unit.buffs.push('+20 ATK (king in enemy)');
  }
 
  // Apply health buff
@@ -1050,7 +1057,7 @@ class Game {
  unit.health = unit.maxHealth;
  }
 
- // Store attack buff for damage calculation
+ // Store attack buff
  unit.kingAttackBonus = attackBonus;
  }
  }
@@ -1172,8 +1179,8 @@ class Game {
 
  const hasMoved = unit.id === 'knight' ? unit.hasMoved : this.unitsActed.has(unit.instanceId);
  if (!tile.unit && dist <= unit.moveRange && !hasMoved && !unit.volcanoEffect) {
- // Don't highlight move if Architect is targeting an enemy space card on this tile
- const isArchitectTargetingSC = unit.id === 'architect' && dist <= 1 && tile.spaceCard 
+ // Don't show move highlight if Architect is targeting an adjacent enemy space card
+ const isArchitectTargetingSC = unit.id === 'architect' && dist <= 1 && tile.spaceCard
  && tile.spaceCard.owner !== currentOwner && this.isSpaceCardVisibleTo(tile.spaceCard, currentOwner);
  if (!isArchitectTargetingSC) {
  tileEl.classList.add('highlight-move');
@@ -1191,7 +1198,7 @@ class Game {
  }
  }
 
- // Architect ability highlight: adjacent enemy space cards
+ // Architect ability highlight: adjacent enemy space cards (with or without units)
  if (unit.id === 'architect' && dist <= 1 && !this.unitsActed.has(unit.instanceId)) {
  if (tile.spaceCard && tile.spaceCard.owner !== currentOwner && this.isSpaceCardVisibleTo(tile.spaceCard, currentOwner)) {
  tileEl.classList.add('highlight-ability');
