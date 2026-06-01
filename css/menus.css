@@ -1,0 +1,79 @@
+/* ===== CROWNFALL TACTICS - MENUS ===== */
+
+/* Main Menu */
+#main-menu {
+  background: linear-gradient(135deg, #0a0505 0%, #1a0f0f 50%, #0d0808 100%);
+}
+.menu-bg {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(192,57,43,0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(41,128,185,0.1) 0%, transparent 50%);
+  animation: bgPulse 4s ease-in-out infinite;
+}
+@keyframes bgPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+.menu-content { position: relative; z-index: 2; text-align: center; }
+.game-title {
+  font-size: 72px; font-weight: 900; color: var(--accent-gold);
+  text-shadow: 3px 3px 0px #5a4030; letter-spacing: 6px; margin-bottom: 5px;
+}
+.title-crown { font-size: 48px; vertical-align: middle; }
+.game-subtitle {
+  font-size: 36px; font-weight: 700; color: var(--accent-red);
+  letter-spacing: 12px; margin-bottom: 50px;
+}
+.menu-buttons { display: flex; flex-direction: column; gap: 15px; align-items: center; }
+.menu-btn {
+  font-family: 'Cinzel', serif; font-size: 20px; font-weight: 700;
+  padding: 15px 40px; min-width: 300px;
+  background: linear-gradient(135deg, var(--bg-panel), var(--bg-panel-light));
+  border: 2px solid var(--border-color); color: var(--text-light);
+  cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden;
+}
+.menu-btn::before {
+  content: ''; position: absolute; top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212,168,83,0.2), transparent);
+  transition: left 0.5s ease;
+}
+.menu-btn:hover::before { left: 100%; }
+.menu-btn:hover {
+  border-color: var(--accent-gold); transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(212,168,83,0.3);
+}
+.menu-btn.primary {
+  background: linear-gradient(135deg, #5a4030, #7a6050);
+  border-color: var(--accent-gold);
+}
+.btn-icon { margin-right: 10px; }
+.menu-footer { margin-top: 40px; color: var(--text-dim); font-size: 14px; }
+.version { margin-top: 5px; font-size: 12px; }
+
+/* Difficulty */
+#difficulty-select .screen-content {
+  text-align: center; background: var(--bg-panel); padding: 40px 60px;
+  border: 2px solid var(--border-color); box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+#difficulty-select h2 { font-size: 36px; color: var(--accent-gold); margin-bottom: 30px; }
+.difficulty-buttons { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+.difficulty-btn {
+  font-family: 'Cinzel', serif; font-size: 18px; padding: 20px 30px;
+  background: var(--bg-dark); border: 2px solid var(--border-color);
+  color: var(--text-light); cursor: pointer; display: flex;
+  align-items: center; gap: 15px; transition: all 0.3s ease;
+  min-width: 350px; text-align: left;
+}
+.difficulty-btn:hover {
+  border-color: var(--accent-gold); background: var(--bg-panel-light);
+  transform: translateX(5px);
+}
+.diff-icon { font-size: 28px; }
+.diff-name { font-weight: 700; min-width: 100px; }
+.diff-desc { font-size: 14px; color: var(--text-dim); }
+.back-btn {
+  font-family: 'Cinzel', serif; font-size: 16px; padding: 10px 30px;
+  background: transparent; border: 1px solid var(--border-color);
+  color: var(--text-dim); cursor: pointer; transition: all 0.3s ease;
+}
+.back-btn:hover { color: var(--text-light); border-color: var(--text-light); }
+

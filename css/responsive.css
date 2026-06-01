@@ -1,0 +1,57 @@
+/* ===== CROWNFALL TACTICS - ANIMATIONS AND RESPONSIVE RULES ===== */
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.shake { animation: shake 0.3s ease-in-out; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-gold); }
+
+/* Responsive */
+@media (max-width: 1200px) {
+  :root { --grid-size: clamp(78px, 7.6vw, 92px); }
+  .side-panel { width: 210px; }
+  #territory-labels { flex-basis: 78px; }
+}
+@media (max-width: 1000px) {
+  :root { --grid-size: 72px; }
+  .side-panel { width: 180px; }
+  #board-container { gap: 8px; padding: 12px; }
+  #territory-labels { flex-basis: 66px; }
+  .territory-label { font-size: 9px; padding-right: 6px; }
+}
+@media (max-width: 900px) {
+  :root { --grid-size: 66px; }
+  .side-panel { width: 160px; }
+  .game-title { font-size: 48px; }
+}
+
+/* Hotseat mode styles */
+.hotseat-turn-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-panel);
+  border: 2px solid var(--accent-gold);
+  padding: 20px 40px;
+  font-size: 24px;
+  font-weight: 700;
+  z-index: 50;
+  animation: fadeIn 0.5s ease;
+}
+
+/* Ensure 4-column grid works on smaller screens */
+@media (max-width: 1000px) {
+  :root {
+    --grid-size: 72px;
+  }
+  .side-panel {
+    width: 180px;
+  }
+}

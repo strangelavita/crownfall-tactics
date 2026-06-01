@@ -1,0 +1,44 @@
+/* ===== CROWNFALL TACTICS - SPACE PLACEMENT ===== */
+
+/* Space Placement */
+#space-placement .screen-content { text-align: center; padding: 20px; }
+#space-placement h2 { font-size: 28px; color: var(--accent-gold); margin-bottom: 10px; }
+.placement-instruction { color: var(--text-dim); margin-bottom: 20px; }
+.space-hand { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+.space-card-item {
+  width: 150px; min-height: 170px; background: var(--bg-panel);
+  border: 2px solid var(--border-color); border-radius: 8px;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-start; cursor: pointer; transition: all 0.3s ease; padding: 10px;
+}
+.space-card-item:hover { border-color: var(--accent-gold); transform: translateY(-3px); }
+.space-card-item.selected { border-color: var(--accent-gold); box-shadow: 0 0 15px rgba(212,168,83,0.4); }
+.space-card-item.placed { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
+.space-card-icon { font-size: 32px; margin-bottom: 5px; }
+.space-card-name { font-size: 11px; font-weight: 700; text-align: center; }
+.space-card-meta { font-size: 10px; color: var(--accent-gold); margin: 4px 0; text-transform: uppercase; }
+.space-card-effect { font-size: 10px; color: var(--text-dim); line-height: 1.35; text-align: center; }
+.placement-board {
+  display: grid; grid-template-columns: repeat(4, 60px);
+  grid-template-rows: repeat(5, 60px); gap: 4px;
+  margin: 0 auto 20px; justify-content: center;
+}
+.placement-tile {
+  width: 60px; height: 60px; border: 1px solid var(--border-color);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.3s ease; font-size: 24px;
+}
+.placement-tile.enemy-territory { background: rgba(192,57,43,0.2); }
+.placement-tile.enemy-territory:hover { border-color: var(--accent-gold); background: rgba(192,57,43,0.4); }
+.placement-tile.neutral-territory { background: rgba(127,140,141,0.2); }
+.placement-tile.player-territory { background: rgba(41,128,185,0.2); }
+.placement-tile.player-territory:hover { border-color: var(--accent-gold); background: rgba(41,128,185,0.4); }
+.placement-tile.occupied { border-color: var(--accent-gold); }
+.primary-btn {
+  font-family: 'Cinzel', serif; font-size: 18px; font-weight: 700;
+  padding: 12px 40px; background: linear-gradient(135deg, var(--accent-gold), #b8933f);
+  border: 2px solid #d4a853; color: #1a0f0f; cursor: pointer; transition: all 0.3s ease;
+}
+.primary-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(212,168,83,0.4); }
+.primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+

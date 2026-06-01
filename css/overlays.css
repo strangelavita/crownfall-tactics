@@ -1,0 +1,68 @@
+/* ===== CROWNFALL TACTICS - OVERLAYS ===== */
+
+/* Overlays */
+.overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8); display: none; justify-content: center;
+  align-items: center; z-index: 100;
+}
+.overlay.active { display: flex; }
+.overlay-content {
+  background: var(--bg-panel); border: 2px solid var(--border-color);
+  padding: 40px 50px; text-align: center; min-width: 400px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.overlay-content.wide { min-width: 600px; max-width: 860px; max-height: 88vh; display: flex; flex-direction: column; }
+.overlay-content h2 { font-size: 36px; color: var(--accent-gold); margin-bottom: 30px; }
+.overlay-btn {
+  font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700;
+  padding: 12px 40px; margin: 8px; background: var(--bg-panel-light);
+  border: 2px solid var(--border-color); color: var(--text-light);
+  cursor: pointer; transition: all 0.3s ease; min-width: 200px;
+}
+.overlay-btn:hover { border-color: var(--accent-gold); background: var(--bg-dark); }
+.overlay-btn.primary { background: linear-gradient(135deg, var(--accent-gold), #b8933f); border-color: var(--accent-gold); color: #1a0f0f; }
+.overlay-btn.danger { border-color: var(--accent-red); color: var(--accent-red); }
+.overlay-btn.danger:hover { background: rgba(192,57,43,0.2); }
+
+/* Settings */
+.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+.setting-row label { font-size: 14px; }
+.setting-row input[type="range"] { width: 150px; }
+.setting-row select { font-family: 'Cinzel', serif; padding: 5px 15px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-light); }
+.toggle-btn { font-family: 'Cinzel', serif; padding: 5px 15px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-light); cursor: pointer; }
+
+/* Tutorial */
+.tutorial-content { text-align: left; margin-bottom: 20px; overflow-y: auto; padding-right: 8px; }
+.tutorial-section { margin-bottom: 10px; padding: 10px 12px; background: var(--bg-dark); border-left: 3px solid var(--accent-gold); }
+.tutorial-section h3 { font-size: 16px; color: var(--accent-gold); margin-bottom: 5px; }
+.tutorial-section p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+/* Game Over */
+#game-result { font-size: 48px; margin-bottom: 20px; }
+#game-result.victory { color: var(--accent-gold); }
+#game-result.defeat { color: var(--accent-red); }
+.final-scores { display: flex; justify-content: center; align-items: center; gap: 30px; margin-bottom: 20px; }
+.final-score { text-align: center; }
+.final-label { display: block; font-size: 14px; color: var(--text-dim); margin-bottom: 5px; }
+.final-value { display: block; font-size: 36px; font-weight: 900; }
+.final-vs { font-size: 20px; color: var(--text-dim); }
+.tiebreaker-info { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; font-style: italic; }
+
+/* Floating Damage */
+#floating-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+.floating-text {
+  position: absolute; font-family: 'Press Start 2P', cursive;
+  font-size: 16px; font-weight: 900; pointer-events: none;
+  animation: floatUp 1.5s ease-out forwards;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.8);
+}
+.floating-text.damage { color: #e74c3c; }
+.floating-text.heal { color: #2ecc71; }
+.floating-text.score { color: var(--accent-gold); }
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  50% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+  100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+}
+
