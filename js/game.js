@@ -24,7 +24,11 @@ class Game {
     this.gameMode = 'hotseat';
     this.matchVariant = 'standard';
     this.totalRounds = CONSTANTS.TOTAL_ROUNDS;
-    this.doubleScoreRounds = [...CONSTANTS.FINAL_ROUNDS];
+    this.baseAP = CONSTANTS.AP_PER_TURN;
+    this.doubleAPRounds = [];
+    this.doubleScoreRounds = [];
+    this.fullHandMode = false;
+    this.drawEachRound = true;
     this.finalRoundScored = false;
     this.isGameOver = false;
     this.kingAlive = { player: true, enemy: true };
@@ -50,18 +54,26 @@ class Game {
   }
 
   configureMatch(variant = 'standard') {
-    this.matchVariant = variant;
-    if (variant === 'quick') {
-      this.totalRounds = CONSTANTS.QUICK_MATCH_TOTAL_ROUNDS;
-      this.doubleScoreRounds = [...CONSTANTS.QUICK_MATCH_DOUBLE_ROUNDS];
-    } else {
-      this.totalRounds = CONSTANTS.TOTAL_ROUNDS;
-      this.doubleScoreRounds = [...CONSTANTS.FINAL_ROUNDS];
-    }
+    const mode = CONSTANTS.MATCH_MODES[variant] || CONSTANTS.MATCH_MODES.standard;
+    this.matchVariant = mode.id;
+    this.totalRounds = mode.totalRounds;
+    this.baseAP = mode.baseAP;
+    this.doubleAPRounds = [...mode.doubleAPRounds];
+    this.doubleScoreRounds = [...mode.doubleScoreRounds];
+    this.fullHandMode = mode.fullHand;
+    this.drawEachRound = mode.drawEachRound;
   }
 
   isDoubleScoreRound(round = this.round) {
     return this.doubleScoreRounds.includes(round);
+  }
+
+  isDoubleAPRound(round = this.round) {
+    return this.doubleAPRounds.includes(round);
+  }
+
+  getAPForRound(round = this.round) {
+    return this.isDoubleAPRound(round) ? this.baseAP * 2 : this.baseAP;
   }
 
   initBoard() {
@@ -79,9 +91,22 @@ class Game {
   }
 
   drawStartingHands() {
+    if (this.fullHandMode) {
+      this.drawAllCards('player');
+      this.drawAllCards('enemy');
+      return;
+    }
+
     for (let i = 0; i < CONSTANTS.STARTING_HAND_SIZE; i++) {
       this.drawCard('player');
       this.drawCard('enemy');
+    }
+  }
+
+  drawAllCards(owner) {
+    let card = this.drawCard(owner);
+    while (card) {
+      card = this.drawCard(owner);
     }
   }
 
@@ -134,7 +159,7 @@ class Game {
     await this.drawPhase();
     this.phase = CONSTANTS.PHASE.PLAYER_TURN;
     this.currentTurn = 'player';
-    this.playerAP = CONSTANTS.AP_PER_TURN;
+    this.playerAP = this.getAPForRound();
     this.unitsActed.clear();
     for (const unit of this.units) {
       unit.hasMoved = false;
@@ -142,10 +167,18 @@ class Game {
     }
     await this.applyTowerDamage('player');
     this.updateUI();
+    if (this.isDoubleAPRound()) {
+      logAction(`Double AP round! Players get ${this.playerAP} AP this round.`, 'system');
+    }
     logAction(`▶ Player 1 turn begins — ${this.playerAP} AP available`, 'player');
   }
 
   async drawPhase() {
+    if (!this.drawEachRound) {
+      await delay(100);
+      return;
+    }
+
     const playerCard = this.drawCard('player');
     const enemyCard = this.drawCard('enemy');
     await delay(300);
@@ -164,7 +197,7 @@ class Game {
     this.clearVolcanoEffects('player');
     this.currentTurn = 'enemy';
     this.phase = CONSTANTS.PHASE.ENEMY_TURN;
-    this.enemyAP = CONSTANTS.AP_PER_TURN;
+    this.enemyAP = this.getAPForRound();
     this.unitsActed.clear();
     for (const unit of this.units) {
       unit.hasMoved = false;
@@ -221,7 +254,7 @@ class Game {
     let multiplier = 1;
     if (this.isDoubleScoreRound()) {
       multiplier = CONSTANTS.SCORE_FINAL_MULTIPLIER;
-      logAction(`Final round! Scoring x${multiplier}`, 'system');
+      logAction(`Double score round! Scoring x${multiplier}`, 'system');
     }
     this.playerScore += playerTerritoryScore * multiplier;
     this.enemyScore += enemyTerritoryScore * multiplier;
@@ -1001,6 +1034,8 @@ class Game {
     const roundTotal = $('#round-total');
     if (roundTotal) roundTotal.textContent = `/ ${this.totalRounds}`;
     $('#ap-value').textContent = this.currentTurn === 'player' ? this.playerAP : this.enemyAP;
+    const apTotal = $('.ap-total');
+    if (apTotal) apTotal.textContent = `/ ${this.getAPForRound()}`;
     $('#player-score').textContent = this.playerScore;
     $('#enemy-score').textContent = this.enemyScore;
     $('#deck-count').textContent = `Deck ${this.currentTurn === 'player' ? this.playerDeck.length : this.enemyDeck.length}`;

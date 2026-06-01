@@ -29,6 +29,7 @@ function initEventListeners() {
   });
 
   $('#btn-hotseat').addEventListener('click', () => {
+    pendingMatchVariant = 'hotseat';
     startHotseatGame();
     if (audioManager) audioManager.playClick();
   });
@@ -44,8 +45,14 @@ function initEventListeners() {
   });
 
   // Difficulty Select - hide or redirect to hotseat
-  $('#btn-easy').addEventListener('click', () => startHotseatGame());
-  $('#btn-normal').addEventListener('click', () => startHotseatGame());
+  $('#btn-easy').addEventListener('click', () => {
+    pendingMatchVariant = 'standard';
+    startHotseatGame();
+  });
+  $('#btn-normal').addEventListener('click', () => {
+    pendingMatchVariant = 'quick';
+    startHotseatGame();
+  });
   $('#btn-back-diff').addEventListener('click', () => {
     pendingMatchVariant = 'standard';
     showScreen('main-menu');

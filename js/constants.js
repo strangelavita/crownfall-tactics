@@ -6,6 +6,38 @@ const CONSTANTS = {
     BOARD_COLS: 4,
     TOTAL_ROUNDS: 10,
     AP_PER_TURN: 3,
+    MATCH_MODES: {
+        quick: {
+            id: 'quick',
+            name: 'Quick Match',
+            totalRounds: 5,
+            baseAP: 5,
+            doubleAPRounds: [],
+            doubleScoreRounds: [5],
+            fullHand: true,
+            drawEachRound: false
+        },
+        standard: {
+            id: 'standard',
+            name: 'Standard Match',
+            totalRounds: 10,
+            baseAP: 3,
+            doubleAPRounds: [],
+            doubleScoreRounds: [8, 9, 10],
+            fullHand: false,
+            drawEachRound: true
+        },
+        hotseat: {
+            id: 'hotseat',
+            name: 'Hotseat',
+            totalRounds: 15,
+            baseAP: 5,
+            doubleAPRounds: [],
+            doubleScoreRounds: [11, 12, 13, 14, 15],
+            fullHand: false,
+            drawEachRound: true
+        }
+    },
 
     // Territory Scoring
     SCORE_OWN: 5,

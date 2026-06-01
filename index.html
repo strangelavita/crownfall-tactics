@@ -29,9 +29,9 @@
         <div class="game-title"><span class="title-crown">👑</span> CROWNFALL</div>
         <div class="game-subtitle">TACTICS</div>
         <div class="menu-buttons">
-          <button id="btn-vs-ai" class="menu-btn primary"><span class="btn-icon">⚔️</span> Standard Match (10 Rounds)</button>
-          <button id="btn-quick-match" class="menu-btn"><span class="btn-icon">⚡</span> Quick Match (5 Rounds)</button>
-          <button id="btn-hotseat" class="menu-btn"><span class="btn-icon">🎮</span> 2 Player Hotseat</button>
+          <button id="btn-vs-ai" class="menu-btn primary"><span class="btn-icon">⚔️</span> Standard Match (10 Rounds, 3 AP)</button>
+          <button id="btn-quick-match" class="menu-btn"><span class="btn-icon">⚡</span> Quick Match (5 Rounds, Full Hand)</button>
+          <button id="btn-hotseat" class="menu-btn"><span class="btn-icon">🎮</span> Hotseat (15 Rounds, 5 AP)</button>
           <button id="btn-tutorial" class="menu-btn"><span class="btn-icon">📖</span> How to Play</button>
           <button id="btn-settings" class="menu-btn"><span class="btn-icon">⚙️</span> Settings</button>
         </div>
@@ -50,12 +50,12 @@
           <button id="btn-easy" class="difficulty-btn">
             <span class="diff-icon">⚔️</span>
             <span class="diff-name">Standard</span>
-            <span class="diff-desc">10 rounds, full strategy</span>
+            <span class="diff-desc">10 rounds, 3 AP, final 3 rounds double points</span>
           </button>
           <button id="btn-normal" class="difficulty-btn">
             <span class="diff-icon">⚡</span>
             <span class="diff-name">Quick</span>
-            <span class="diff-desc">5 rounds, fast paced</span>
+            <span class="diff-desc">5 rounds, all cards in hand, final round double points</span>
           </button>
         </div>
         <button id="btn-back-diff" class="back-btn">← Back to Menu</button>
@@ -227,15 +227,15 @@
         <div class="tutorial-content">
           <div class="tutorial-section">
             <h3>🎯 Objective</h3>
-            <p>Play 10 rounds on a 5x4 board. Control territory with surviving troops to score points at the end of each round. Highest score wins, unless a King is slain first.</p>
+            <p>Control territory with surviving troops to score points at the end of each round. Highest score wins, unless a King is slain first.</p>
           </div>
           <div class="tutorial-section">
             <h3>⚔️ Combat</h3>
-            <p>Deploy troops, move them, and attack enemies. Each action costs AP (Action Points). Player 1 takes a turn with 3 AP, then Player 2 takes a turn with 3 AP.</p>
+            <p>Deploy troops, move them, and attack enemies. Each action costs AP (Action Points). Standard uses 3 AP. Quick and Hotseat use 5 AP.</p>
           </div>
           <div class="tutorial-section">
             <h3>🏰 Territories</h3>
-            <p>Rows A-B are Player 2's territory, row C is neutral, and rows D-E are Player 1's territory. Own territory scores 5, neutral scores 10, enemy territory scores 20. Rounds 8-10 score double.</p>
+            <p>Rows A-B are Player 2's territory, row C is neutral, and rows D-E are Player 1's territory. Own territory scores 5, neutral scores 10, enemy territory scores 20. Quick doubles points in round 5; Standard doubles points in rounds 8-10; Hotseat doubles points in rounds 11-15.</p>
           </div>
           <div class="tutorial-section">
             <h3>👑 The King</h3>
